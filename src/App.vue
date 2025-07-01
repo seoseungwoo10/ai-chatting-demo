@@ -1,19 +1,19 @@
 <template>
-  <div id="app" class="min-h-screen bg-gray-100">
-    <div class="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+  <div id="app" class="h-screen bg-gray-100 flex flex-col">
+    <div class="max-w-4xl mx-auto w-full h-full py-6 px-4 sm:px-6 lg:px-8 flex flex-col">
+      <div class="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col h-full">
         <!-- Header -->
-        <div class="bg-blue-600 text-white px-6 py-4">
+        <div class="bg-blue-600 text-white px-6 py-4 flex-shrink-0">
           <h1 class="text-xl font-semibold">AI 채팅 데모</h1>
           <p class="text-blue-100 text-sm">마크다운 지원 채팅창</p>
         </div>
 
         <!-- Chat Messages -->
         <div
-          class="chat-container h-96 overflow-y-auto p-4 space-y-4"
+          class="chat-container overflow-y-auto p-4 space-y-4 flex-1 min-h-0"
           ref="chatContainer"
         >
-          <ChatMessage
+          <ChatMessage2
             v-for="message in messages"
             :key="message.id"
             :message="message"
@@ -37,7 +37,7 @@
         </div>
 
         <!-- Input Area -->
-        <div class="border-t border-gray-200 p-4">
+        <div class="border-t border-gray-200 p-4 flex-shrink-0">
           <div class="flex space-x-4">
             <div class="flex-1">
               <textarea
@@ -67,7 +67,7 @@
         </div>
 
         <!-- Demo Buttons -->
-        <div class="border-t border-gray-200 p-4 bg-gray-50">
+        <div class="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0">
           <h3 class="text-sm font-medium text-gray-700 mb-2">데모 메시지:</h3>
           <div class="flex flex-wrap gap-2">
             <button
@@ -86,12 +86,13 @@
 </template>
 
 <script>
-import ChatMessage from './components/ChatMessage.vue'
+//import ChatMessage from './components/ChatMessage.vue'
+import ChatMessage2 from './components/ChatMessage2.vue'
 
 export default {
   name: 'App',
   components: {
-    ChatMessage
+    ChatMessage2
   },
   data() {
     return {
@@ -235,5 +236,38 @@ export default {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure proper flexbox behavior for full height */
+.chat-container {
+  /* Custom scrollbar styling */
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.chat-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.chat-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.chat-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 2px;
+}
+
+.chat-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Ensure the chat container takes up remaining space correctly */
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.min-h-0 {
+  min-height: 0;
 }
 </style>
