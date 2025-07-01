@@ -177,6 +177,11 @@ export default {
 }
 </script>
 ```
+
+## 데모 화면
+
+![AI 채팅 데모 화면](image.png)
+
 ## 라이선스
 
 MIT License
