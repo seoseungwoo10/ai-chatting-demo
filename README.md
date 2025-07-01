@@ -10,6 +10,8 @@ Vue.js 2 기반의 AI 채팅 인터페이스로 마크다운 렌더링과 코드
 - 💬 **실시간 채팅**: 사용자와 AI 메시지 구분 표시
 - 📱 **모바일 친화적**: 모든 디바이스에서 최적화된 경험
 - ⚡ **타이핑 애니메이션**: AI 응답 시 실시간 타이핑 효과
+- 📋 **메시지 관리**: 복사하기, 삭제 기능 지원
+- 🎯 **이중 컴포넌트**: Tailwind CSS 버전과 순수 CSS 버전 제공
 
 ## 기술 스택
 
@@ -53,6 +55,11 @@ npm run build
 4. **키보드 단축키**:
    - `Enter`: 메시지 전송
    - `Shift + Enter`: 줄바꿈
+
+5. **메시지 관리**:
+   - 메시지에 마우스를 올리면 액션 버튼 표시
+   - 📋 복사 버튼: 메시지 내용을 클립보드에 복사
+   - 🗑️ 삭제 버튼: AI 메시지 삭제 (AI 메시지에만 표시)
 
 ## 지원하는 마크다운 문법
 
@@ -115,13 +122,61 @@ import 'highlight.js/styles/vs2015.css'
 ```
 src/
 ├── components/
-│   └── ChatMessage.vue    # 채팅 메시지 컴포넌트
+│   ├── ChatMessage.vue    # 채팅 메시지 컴포넌트 (Tailwind CSS 버전)
+│   └── ChatMessage2.vue   # 채팅 메시지 컴포넌트 (순수 CSS 버전)
 ├── styles/
 │   └── tailwind.css       # Tailwind CSS 설정
 ├── App.vue                # 메인 앱 컴포넌트
 └── main.js               # 앱 진입점
 ```
 
+## 컴포넌트 버전
+
+### ChatMessage.vue (Tailwind CSS 버전)
+- Tailwind CSS 클래스 사용
+- 반응형 디자인
+- 유틸리티 클래스 기반 스타일링
+
+### ChatMessage2.vue (순수 CSS 버전)
+- Tailwind CSS 없이 순수 CSS 사용
+- 동일한 기능과 디자인
+- 커스텀 CSS 클래스 사용
+- Tailwind CSS 의존성 없이 독립적으로 사용 가능
+
+두 컴포넌트는 동일한 API와 기능을 제공하므로 필요에 따라 교체하여 사용할 수 있습니다.
+
+### ChatMessage vs ChatMessage2 교체
+
+`App.vue` 파일을 아래와 같이 교체한다.
+
+```javascript 
+<Template>
+        <!-- Chat Messages -->
+        <div
+          class="chat-container h-96 overflow-y-auto p-4 space-y-4"
+          ref="chatContainer"
+        >
+          <!-- ChatMessage vs ChatMessage2 교체 -->
+          <ChatMessage2
+            v-for="message in messages"
+            :key="message.id"
+            :message="message"
+            @delete-message="deleteMessage"
+          />
+         ...
+</Template>         
+<script>
+//import ChatMessage from './components/ChatMessage.vue'
+import ChatMessage2 from './components/ChatMessage2.vue'
+export default {
+  name: 'App',
+  components: {
+    ChatMessage2
+  },
+  ...
+}
+</script>
+```
 ## 라이선스
 
 MIT License
