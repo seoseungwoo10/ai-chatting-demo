@@ -19,7 +19,17 @@
       </div>
       
       <div class="message-bubble prose" :class="bubbleClass">
-        <div v-html="renderedContent"></div>
+        <!-- Loading State for AI messages -->
+        <div v-if="!message.isUser && message.isStreaming && !message.content" class="flex items-center space-x-2 py-2">
+          <div class="flex space-x-1">
+            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+            <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+          </div>
+          <span class="text-sm text-gray-500">AI가 답변을 생성 중입니다...</span>
+        </div>
+        <!-- Message Content -->
+        <div v-else v-html="renderedContent"></div>
       </div>
       
       <!-- Action Buttons -->
@@ -45,6 +55,18 @@
         >
           <svg class="icon delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+          </svg>
+        </button>
+        
+        <!-- Refresh Button (only for AI messages) -->
+        <button
+          v-if="!message.isUser"
+          @click="refreshMessage"
+          class="action-btn refresh-btn"
+          title="답변 새로고침"
+        >
+          <svg class="icon refresh-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
           </svg>
         </button>
       </div>
@@ -187,6 +209,10 @@ export default {
     deleteMessage() {
       // Emit event to parent component to handle deletion
       this.$emit('delete-message', this.message.id)
+    },
+    refreshMessage() {
+      // Emit event to parent component to handle refresh
+      this.$emit('refresh-message', this.message.id)
     }
   }
 }
@@ -325,6 +351,10 @@ export default {
   background-color: #fee2e2;
 }
 
+.refresh-btn:hover {
+  background-color: #dbeafe;
+}
+
 .icon {
   width: 16px;
   height: 16px;
@@ -333,6 +363,11 @@ export default {
 
 .action-btn:hover .icon {
   transform: scale(1.1);
+}
+
+.refresh-btn:hover .refresh-icon {
+  transform: rotate(180deg) scale(1.1);
+  transition: transform 0.3s ease-in-out;
 }
 
 .user-icon {
@@ -345,6 +380,10 @@ export default {
 
 .delete-icon {
   color: #ef4444;
+}
+
+.refresh-icon {
+  color: #3b82f6;
 }
 
 /* Prose styles for markdown content */

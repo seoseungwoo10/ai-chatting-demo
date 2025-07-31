@@ -18,26 +18,40 @@
             :key="message.id"
             :message="message"
             @delete-message="deleteMessage"
+            @refresh-message="refreshMessage"
           />
-          
-          <div v-if="isTyping" class="flex items-start space-x-3">
-            <div class="bg-gray-200 rounded-full p-2">
-              <svg class="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-            </div>
-            <div class="bg-gray-200 rounded-lg px-4 py-2 max-w-xs">
-              <div class="flex space-x-1">
-                <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
-                <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                <div class="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Input Area -->
         <div class="border-t border-gray-200 p-4 flex-shrink-0">
+          <!-- Model Selection Bar -->
+          <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+              <label class="text-sm font-medium text-gray-700">AI 모델:</label>
+              <select 
+                v-model="selectedModel" 
+                class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                :disabled="isLoading"
+              >
+                <optgroup label="OpenAI">
+                  <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                </optgroup>
+                <optgroup label="Anthropic">
+                  <option value="claude-3-5-haiku-20241022">Claude Haiku 3.5</option>
+                  <option value="claude-3-5-sonnet-20241022">Sonnet 3</option>
+                </optgroup>
+              </select>
+            </div>
+            
+            <!-- API Status -->
+            <div class="flex items-center space-x-2">
+              <span class="text-xs text-gray-600">
+                {{ apiStatus.isValid ? 'API 준비됨' : 'API 키 필요' }}
+              </span>
+            </div>
+          </div>
+          
           <div class="flex space-x-4">
             <div class="flex-1">
               <textarea
@@ -51,10 +65,11 @@
             <div class="flex flex-col space-y-2">
               <button
                 @click="sendMessage"
-                :disabled="!inputMessage.trim() || isTyping"
+                :disabled="!inputMessage.trim() || isLoading"
                 class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                전송
+                <span v-if="isLoading">전송 중...</span>
+                <span v-else>전송</span>
               </button>
               <button
                 @click="clearChat"
@@ -88,6 +103,7 @@
 <script>
 //import ChatMessage from './components/ChatMessage.vue'
 import ChatMessage2 from './components/ChatMessage2.vue'
+import apiService from './services/apiService.js'
 
 export default {
   name: 'App',
@@ -98,35 +114,46 @@ export default {
     return {
       messages: [],
       inputMessage: '',
-      isTyping: false,
+      isLoading: false,
       messageId: 1,
+      selectedModel: 'gpt-4o-mini',
+      apiStatus: {
+        isValid: false,
+        errors: []
+      },
       demoMessages: [
         {
           id: 1,
-          title: '코드 예제',
-          content: '다음은 JavaScript 함수 예제입니다:\n\n```javascript\nfunction greet(name) {\n  return `Hello, ${name}!`;\n}\n\nconsole.log(greet("World"));\n```'
+          title: '코드 작성 요청',
+          content: 'JavaScript로 배열에서 중복값을 제거하는 함수를 작성해주세요.'
         },
         {
           id: 2,
-          title: '마크다운 문법',
-          content: '# 마크다운 예제\n\n## 텍스트 스타일\n\n- **굵은 글씨**\n- *기울임 글씨*\n- `인라인 코드`\n\n> 인용문입니다.\n\n1. 순서가 있는 목록\n2. 두 번째 항목'
+          title: '설명 요청',
+          content: 'React와 Vue.js의 차이점을 설명해주세요.'
         },
         {
           id: 3,
-          title: 'Python 코드',
-          content: 'Python으로 피보나치 수열을 구현해보세요:\n\n```python\ndef fibonacci(n):\n    """피보나치 수열을 계산하는 함수"""\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n\n# 테스트\nfor i in range(10):\n    print(f"fibonacci({i}) = {fibonacci(i)}")\n```'
+          title: '문제 해결',
+          content: 'Python에서 리스트를 정렬하는 다양한 방법들을 알려주세요.'
         },
         {
           id: 4,
-          title: 'HTML/CSS',
-          content: '웹 페이지 구조를 만들어보세요:\n\n```html\n<!DOCTYPE html>\n<html lang="ko">\n<head>\n    <meta charset="UTF-8">\n    <title>샘플 페이지</title>\n    <style>\n        .container {\n            max-width: 800px;\n            margin: 0 auto;\n            padding: 20px;\n        }\n    </style>\n</head>\n<body>\n    <div class="container">\n        <h1>안녕하세요!</h1>\n        <p>이것은 샘플 HTML 페이지입니다.</p>\n    </div>\n</body>\n</html>\n```'
+          title: '코드 리뷰',
+          content: '다음 코드를 개선할 수 있는 방법이 있나요?\n\n```javascript\nfunction getData() {\n  return fetch("/api/data")\n    .then(response => response.json())\n    .then(data => data)\n    .catch(error => console.log(error))\n}\n```'
         }
       ]
     }
   },
   methods: {
-    sendMessage() {
-      if (!this.inputMessage.trim()) return
+    async sendMessage() {
+      if (!this.inputMessage.trim() || this.isLoading) return
+
+      // API 키 검증
+      if (!this.apiStatus.isValid) {
+        this.showApiKeyError()
+        return
+      }
 
       // Add user message
       this.addMessage({
@@ -138,8 +165,77 @@ export default {
       const userMessage = this.inputMessage
       this.inputMessage = ''
 
-      // Simulate AI response
-      this.simulateAIResponse(userMessage)
+      // Send to AI
+      await this.sendToAI(userMessage)
+    },
+
+    async sendToAI(userMessage) {
+      this.isLoading = true
+
+      // Create AI message placeholder
+      const aiMessageId = this.messageId++
+      const aiMessage = {
+        id: aiMessageId,
+        content: '',
+        isUser: false,
+        timestamp: new Date(),
+        isStreaming: true
+      }
+      this.messages.push(aiMessage)
+
+      try {
+        // Prepare conversation context (last 10 messages)
+        const conversationMessages = this.messages
+          .filter(msg => !msg.isStreaming)
+          .slice(-10)
+          .map(msg => ({
+            role: msg.isUser ? 'user' : 'assistant',
+            content: msg.content
+          }))
+
+        // Add current user message
+        conversationMessages.push({
+          role: 'user',
+          content: userMessage
+        })
+
+        // Stream response from API
+        await apiService.streamResponse(
+          conversationMessages,
+          this.selectedModel,
+          (chunk) => {
+            // Update AI message content with streamed text
+            const messageIndex = this.messages.findIndex(msg => msg.id === aiMessageId)
+            if (messageIndex !== -1) {
+              this.messages[messageIndex].content += chunk
+              this.$nextTick(() => {
+                this.scrollToBottom()
+              })
+            }
+          }
+        )
+
+        // Mark streaming as complete
+        const messageIndex = this.messages.findIndex(msg => msg.id === aiMessageId)
+        if (messageIndex !== -1) {
+          this.messages[messageIndex].isStreaming = false
+        }
+
+      } catch (error) {
+        console.error('AI API Error:', error)
+        
+        // Update AI message with error
+        const messageIndex = this.messages.findIndex(msg => msg.id === aiMessageId)
+        if (messageIndex !== -1) {
+          this.messages[messageIndex].content = `❌ **오류 발생**: ${error.message}\n\n다음을 확인해주세요:\n- API 키가 올바른지 확인\n- 네트워크 연결 상태 확인\n- 선택된 모델이 사용 가능한지 확인`
+          this.messages[messageIndex].isStreaming = false
+        }
+      } finally {
+        this.isLoading = false
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
+      }
     },
 
     sendDemoMessage(demo) {
@@ -158,47 +254,96 @@ export default {
       })
     },
 
-    simulateAIResponse(userMessage) {
-      this.isTyping = true
-
-      // Simulate typing delay
-      setTimeout(() => {
-        this.isTyping = false
-        
-        // Generate AI response based on user message
-        let aiResponse = this.generateAIResponse(userMessage)
-        
-        this.addMessage({
-          content: aiResponse,
-          isUser: false,
-          timestamp: new Date()
-        })
-      }, 1000 + Math.random() * 2000) // Random delay between 1-3 seconds
-    },
-
-    generateAIResponse(userMessage) {
-      const responses = [
-        `네, "${userMessage}"에 대해 설명드리겠습니다.\n\n**주요 포인트:**\n- 이것은 시뮬레이션된 AI 응답입니다\n- 실제 AI 모델과 연결되어 있지 않습니다\n- 마크다운 문법을 지원합니다\n\n\`\`\`javascript\n// 예제 코드\nconsole.log("Hello, World!");\n\`\`\``,
-        
-        `좋은 질문이네요! 다음과 같이 답변드릴게요:\n\n1. **첫 번째 포인트**: 마크다운 렌더링이 잘 작동합니다\n2. **두 번째 포인트**: 코드 하이라이팅도 지원됩니다\n3. **세 번째 포인트**: 반응형 디자인으로 모바일에서도 잘 보입니다\n\n> 💡 **팁**: Shift+Enter로 줄바꿈을 할 수 있습니다!`,
-        
-        `흥미로운 주제입니다. 코드 예제와 함께 설명해드릴게요:\n\n\`\`\`python\ndef example_function():\n    """예제 함수입니다"""\n    return "Hello from Python!"\n\nprint(example_function())\n\`\`\`\n\n**결과:**\n- 함수가 정상적으로 실행됩니다\n- 문자열을 반환합니다\n- *이탤릭체*와 **굵은 글씨**도 잘 표시됩니다`,
-
-        `\`${userMessage}\`에 대한 답변입니다:\n\n## 개요\n\n이는 Vue.js 2와 Tailwind CSS로 만든 채팅 인터페이스입니다.\n\n### 특징\n\n- [x] 마크다운 렌더링\n- [x] 코드 하이라이팅  \n- [x] 반응형 디자인\n- [x] 실시간 타이핑 애니메이션\n\n---\n\n**참고:** 이것은 데모용 응답입니다.`
-      ]
-
-      return responses[Math.floor(Math.random() * responses.length)]
-    },
-
     clearChat() {
       this.messages = []
       this.messageId = 1
+      this.addWelcomeMessage()
     },
 
     deleteMessage(messageId) {
       const index = this.messages.findIndex(msg => msg.id === messageId)
       if (index !== -1) {
         this.messages.splice(index, 1)
+      }
+    },
+
+    async refreshMessage(messageId) {
+      // AI 메시지인지 확인
+      const messageIndex = this.messages.findIndex(msg => msg.id === messageId)
+      if (messageIndex === -1 || this.messages[messageIndex].isUser) {
+        return
+      }
+
+      // API 키 검증
+      if (!this.apiStatus.isValid) {
+        this.showApiKeyError()
+        return
+      }
+
+      // 해당 메시지의 이전 사용자 메시지 찾기
+      let userMessage = ''
+      for (let i = messageIndex - 1; i >= 0; i--) {
+        if (this.messages[i].isUser) {
+          userMessage = this.messages[i].content
+          break
+        }
+      }
+
+      if (!userMessage) {
+        console.error('이전 사용자 메시지를 찾을 수 없습니다.')
+        return
+      }
+
+      // 로딩 상태로 변경
+      this.isLoading = true
+      this.messages[messageIndex].content = ''
+      this.messages[messageIndex].isStreaming = true
+
+      try {
+        // 대화 컨텍스트 준비 (새로고침할 메시지 이전까지)
+        const conversationMessages = this.messages
+          .slice(0, messageIndex)
+          .filter(msg => !msg.isStreaming)
+          .slice(-10)
+          .map(msg => ({
+            role: msg.isUser ? 'user' : 'assistant',
+            content: msg.content
+          }))
+
+        // 현재 사용자 메시지 추가
+        conversationMessages.push({
+          role: 'user',
+          content: userMessage
+        })
+
+        // API에서 새로운 응답 받기
+        await apiService.streamResponse(
+          conversationMessages,
+          this.selectedModel,
+          (chunk) => {
+            // AI 메시지 내용 업데이트
+            this.messages[messageIndex].content += chunk
+            this.$nextTick(() => {
+              this.scrollToBottom()
+            })
+          }
+        )
+
+        // 스트리밍 완료
+        this.messages[messageIndex].isStreaming = false
+        this.messages[messageIndex].timestamp = new Date()
+
+      } catch (error) {
+        console.error('AI API Refresh Error:', error)
+        
+        // 오류 메시지로 업데이트
+        this.messages[messageIndex].content = `❌ **새로고침 오류**: ${error.message}\n\n다음을 확인해주세요:\n- API 키가 올바른지 확인\n- 네트워크 연결 상태 확인\n- 선택된 모델이 사용 가능한지 확인`
+        this.messages[messageIndex].isStreaming = false
+      } finally {
+        this.isLoading = false
+        this.$nextTick(() => {
+          this.scrollToBottom()
+        })
       }
     },
 
@@ -217,16 +362,52 @@ export default {
       // Prevent default Enter behavior and send message
       event.preventDefault()
       this.sendMessage()
+    },
+
+    addWelcomeMessage() {
+      this.addMessage({
+        content: `안녕하세요! 👋\n\n저는 **실제 AI 모델**과 연결된 채팅봇입니다.\n\n**사용 가능한 모델:**\n- GPT-4.1 Mini (OpenAI)\n- GPT-4o Mini (OpenAI)\n- Claude Haiku 3.5 (Anthropic)\n- Sonnet 3 (Anthropic)\n\n**기능:**\n- 📝 마크다운 문법 지원\n- 💻 코드 하이라이팅\n- 🔄 실시간 스트리밍 응답\n- 📱 반응형 디자인\n\n${this.apiStatus.isValid ? '✅ API가 준비되었습니다. 아무거나 물어보세요!' : '⚠️ API 키를 설정해주세요 (.env 파일)'}`,
+        isUser: false,
+        timestamp: new Date()
+      })
+    },
+
+    showApiKeyError() {
+      this.addMessage({
+        content: `❌ **API 키 오류**\n\n다음을 확인해주세요:\n\n1. 프로젝트 루트에 \`.env\` 파일이 있는지 확인\n2. \`.env\` 파일에 다음 내용이 포함되어 있는지 확인:\n\n\`\`\`\nVUE_APP_OPENAI_API_KEY=your_openai_key_here\nVUE_APP_ANTHROPIC_API_KEY=your_anthropic_key_here\n\`\`\`\n\n3. API 키가 유효한지 확인\n4. 개발 서버를 재시작해주세요 (\`npm run serve\`)`,
+        isUser: false,
+        timestamp: new Date()
+      })
+    },
+
+    validateApiKeys() {
+      try {
+        const validation = apiService.validateApiKeys()
+        this.apiStatus = validation
+      } catch (error) {
+        this.apiStatus = {
+          isValid: false,
+          errors: ['API 서비스 초기화 실패']
+        }
+      }
+    }
+  },
+
+  watch: {
+    selectedModel() {
+      // 모델 변경시 UI 업데이트
+      this.$nextTick(() => {
+        this.scrollToBottom()
+      })
     }
   },
 
   mounted() {
+    // API 키 검증
+    this.validateApiKeys()
+    
     // Welcome message
-    this.addMessage({
-      content: '안녕하세요! 👋\n\n저는 AI 채팅 데모봇입니다. 다음 기능들을 테스트해보세요:\n\n- **마크다운 문법** 지원\n- `코드 하이라이팅` 기능\n- 반응형 디자인\n\n아래 데모 버튼을 클릭하거나 직접 메시지를 입력해보세요!',
-      isUser: false,
-      timestamp: new Date()
-    })
+    this.addWelcomeMessage()
   }
 }
 </script>
