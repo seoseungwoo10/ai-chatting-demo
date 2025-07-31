@@ -286,10 +286,6 @@ export default {
 
 *실제 OpenAI GPT 및 Anthropic Claude 모델과 연동된 라이브 채팅 인터페이스*
 
-## 라이선스
-
-MIT License
-
 ## 문제 해결
 
 ### API 키 관련 문제
@@ -305,3 +301,7 @@ MIT License
 ### 모델 선택 문제
 - 선택한 모델이 API 키와 호환되는지 확인
 - OpenAI 모델은 OpenAI 키, Anthropic 모델은 Anthropic 키 필요
+
+## 라이선스
+
+MIT License
