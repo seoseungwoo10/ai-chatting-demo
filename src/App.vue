@@ -1,11 +1,26 @@
 <template>
   <div id="app" class="h-screen bg-gray-100 flex flex-col">
+    <!-- 인증 모달 -->
+    <AuthModal
+      v-if="!isAuthenticated"
+      @success="handleAuthSuccess"
+    />
+
     <div class="max-w-4xl mx-auto w-full h-full py-6 px-4 sm:px-6 lg:px-8 flex flex-col">
       <div class="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col h-full">
         <!-- Header -->
         <div class="bg-blue-600 text-white px-6 py-4 flex-shrink-0">
-          <h1 class="text-xl font-semibold">AI 채팅 데모</h1>
-          <p class="text-blue-100 text-sm">마크다운 지원 채팅창</p>
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-xl font-semibold">AI 채팅 데모</h1>
+              <p class="text-blue-100 text-sm">마크다운 지원 채팅창</p>
+            </div>
+            
+            <!-- 사용자 프로필 (로그인된 경우) -->
+            <div v-if="isAuthenticated" class="text-white">
+              <UserProfile @create-account="showAuthModal = true" />
+            </div>
+          </div>
         </div>
 
         <!-- Chat Messages -->
@@ -14,7 +29,7 @@
           ref="chatContainer"
         >
           <ChatMessage2
-            v-for="message in messages"
+            v-for="message in safeCurrentMessages"
             :key="message.id"
             :message="message"
             @delete-message="deleteMessage"
@@ -101,21 +116,23 @@
 </template>
 
 <script>
-//import ChatMessage from './components/ChatMessage.vue'
+import { mapGetters, mapActions } from 'vuex'
 import ChatMessage2 from './components/ChatMessage2.vue'
+import AuthModal from './components/auth/AuthModal.vue'
+import UserProfile from './components/auth/UserProfile.vue'
 import apiService from './services/apiService.js'
 
 export default {
   name: 'App',
   components: {
-    ChatMessage2
+    ChatMessage2,
+    AuthModal,
+    UserProfile
   },
   data() {
     return {
-      messages: [],
       inputMessage: '',
       isLoading: false,
-      messageId: 1,
       selectedModel: 'gpt-4o-mini',
       apiStatus: {
         isValid: false,
@@ -145,9 +162,62 @@ export default {
       ]
     }
   },
+  computed: {
+    ...mapGetters('auth', ['isAuthenticated', 'currentUser']),
+    ...mapGetters('chat', ['currentChatId']),
+    
+    // 직접 구현한 getCurrentChat
+    getCurrentChat() {
+      const chatId = this.$store.getters['chat/currentChatId']
+      if (!chatId) return null
+      return this.$store.getters['chat/getChatById'](chatId)
+    },
+    
+    // 직접 구현한 currentMessages
+    currentMessages() {
+      const chat = this.getCurrentChat
+      return chat ? chat.messages || [] : []
+    },
+    
+    // currentMessages가 undefined인 경우 빈 배열 반환
+    safeCurrentMessages() {
+      return this.currentMessages || []
+    }
+  },
+  async mounted() {
+    // 세션 복원 시도
+    await this.restoreSession()
+    
+    // API 키 상태 확인
+    this.checkApiKeys()
+    
+    // 인증된 사용자가 있으면 채팅 초기화
+    if (this.isAuthenticated) {
+      this.initializeChat()
+    }
+  },
   methods: {
+    ...mapActions('auth', ['restoreSession']),
+    ...mapActions('chat', ['createChat', 'addMessage', 'deleteMessage']),
+    
+    async handleAuthSuccess(user) {
+      this.initializeChat()
+    },
+    
+    initializeChat() {
+      // 현재 채팅이 없으면 새로 생성
+      if (!this.getCurrentChat) {
+        this.createChat()
+      }
+    },
     async sendMessage() {
       if (!this.inputMessage.trim() || this.isLoading) return
+
+      // 인증 체크
+      if (!this.isAuthenticated) {
+        console.warn('사용자가 인증되지 않았습니다.')
+        return
+      }
 
       // API 키 검증
       if (!this.apiStatus.isValid) {
@@ -155,80 +225,167 @@ export default {
         return
       }
 
-      // Add user message
-      this.addMessage({
-        content: this.inputMessage,
-        isUser: true,
-        timestamp: new Date()
-      })
-
-      const userMessage = this.inputMessage
-      this.inputMessage = ''
-
-      // Send to AI
-      await this.sendToAI(userMessage)
-    },
-
-    async sendToAI(userMessage) {
-      this.isLoading = true
-
-      // Create AI message placeholder
-      const aiMessageId = this.messageId++
-      const aiMessage = {
-        id: aiMessageId,
-        content: '',
-        isUser: false,
-        timestamp: new Date(),
-        isStreaming: true
+      // 현재 채팅이 없으면 생성
+      let currentChatId = this.$store.getters['chat/currentChatId']
+      
+      if (!currentChatId) {
+        currentChatId = await this.createChat()
+        if (!currentChatId) {
+          console.error('채팅 생성에 실패했습니다.')
+          return
+        }
+        
+        // 채팅 생성 후 상태 확인
+        await this.$nextTick()
       }
-      this.messages.push(aiMessage)
+
+      // 사용자 메시지 추가
+      const userMessage = this.inputMessage
 
       try {
-        // Prepare conversation context (last 10 messages)
-        const conversationMessages = this.messages
+        const addedMessage = await this.addMessage({
+          chatId: currentChatId,
+          message: {
+            content: userMessage,
+            sender: 'user',
+            model: this.selectedModel
+          }
+        })
+        
+        if (!addedMessage) {
+          throw new Error('사용자 메시지 추가에 실패했습니다.')
+        }
+
+        this.inputMessage = ''
+
+        // AI에게 전송
+        await this.sendToAI(userMessage, currentChatId)
+      } catch (error) {
+        console.error('메시지 전송 중 오류:', error)
+        // 입력 메시지 복원
+        this.inputMessage = this.inputMessage || userMessage
+      }
+    },
+
+    async sendToAI(userMessage, chatId) {
+      this.isLoading = true
+      let aiMessage = null
+
+      try {
+        // AI 메시지 플레이스홀더 생성
+        aiMessage = await this.addMessage({
+          chatId,
+          message: {
+            content: '',
+            sender: 'ai',
+            model: this.selectedModel,
+            isStreaming: true
+          }
+        })
+
+        if (!aiMessage) {
+          throw new Error('AI 메시지 생성에 실패했습니다.')
+        }
+
+        // Vuex 상태 업데이트를 기다림
+        await this.$nextTick()
+
+        // 대화 히스토리 구성 (최근 10개 메시지)
+        const conversationMessages = this.safeCurrentMessages
           .filter(msg => !msg.isStreaming)
           .slice(-10)
           .map(msg => ({
-            role: msg.isUser ? 'user' : 'assistant',
+            role: msg.sender === 'user' ? 'user' : 'assistant',
             content: msg.content
           }))
 
-        // Add current user message
+        // 현재 사용자 메시지 추가
         conversationMessages.push({
           role: 'user',
           content: userMessage
         })
 
-        // Stream response from API
+        // AI 메시지 인덱스 찾기
+        let aiMessageIndex = -1
+        let retryCount = 0
+        
+        while (aiMessageIndex === -1 && retryCount < 3) {
+          aiMessageIndex = this.safeCurrentMessages.findIndex(msg => msg.id === aiMessage.id)
+          if (aiMessageIndex === -1) {
+            await this.$nextTick()
+            retryCount++
+          }
+        }
+        
+        if (aiMessageIndex === -1) {
+          console.error('AI 메시지를 찾을 수 없습니다.')
+          throw new Error('AI 메시지를 찾을 수 없습니다.')
+        }
+
+        // API에서 스트리밍 응답 받기
         await apiService.streamResponse(
           conversationMessages,
           this.selectedModel,
           (chunk) => {
-            // Update AI message content with streamed text
-            const messageIndex = this.messages.findIndex(msg => msg.id === aiMessageId)
-            if (messageIndex !== -1) {
-              this.messages[messageIndex].content += chunk
-              this.$nextTick(() => {
-                this.scrollToBottom()
-              })
+            // 스트리밍 텍스트로 AI 메시지 업데이트
+            if (aiMessageIndex !== -1) {
+              const currentMessage = this.safeCurrentMessages[aiMessageIndex]
+              if (currentMessage) {
+                this.$store.commit('chat/UPDATE_MESSAGE', {
+                  userId: this.currentUser.id,
+                  chatId,
+                  messageIndex: aiMessageIndex,
+                  updates: {
+                    content: currentMessage.content + chunk
+                  }
+                })
+                this.$nextTick(() => {
+                  this.scrollToBottom()
+                })
+              }
             }
           }
         )
 
-        // Mark streaming as complete
-        const messageIndex = this.messages.findIndex(msg => msg.id === aiMessageId)
-        if (messageIndex !== -1) {
-          this.messages[messageIndex].isStreaming = false
+        // 스트리밍 완료 표시
+        if (aiMessageIndex !== -1) {
+          this.$store.commit('chat/UPDATE_MESSAGE', {
+            userId: this.currentUser.id,
+            chatId,
+            messageIndex: aiMessageIndex,
+            updates: {
+              isStreaming: false
+            }
+          })
         }
 
       } catch (error) {
         console.error('AI API Error:', error)
         
-        // Update AI message with error
-        const messageIndex = this.messages.findIndex(msg => msg.id === aiMessageId)
-        if (messageIndex !== -1) {
-          this.messages[messageIndex].content = `❌ **오류 발생**: ${error.message}\n\n다음을 확인해주세요:\n- API 키가 올바른지 확인\n- 네트워크 연결 상태 확인\n- 선택된 모델이 사용 가능한지 확인`
-          this.messages[messageIndex].isStreaming = false
+        // 에러 메시지로 AI 메시지 업데이트
+        if (aiMessage) {
+          // AI 메시지 인덱스 찾기 (재시도 로직)
+          let errorMessageIndex = -1
+          let retryCount = 0
+          while (errorMessageIndex === -1 && retryCount < 3) {
+            errorMessageIndex = this.safeCurrentMessages.findIndex(msg => msg.id === aiMessage.id)
+            if (errorMessageIndex === -1) {
+              await this.$nextTick()
+              retryCount++
+            }
+          }
+          
+          if (errorMessageIndex !== -1) {
+            this.$store.commit('chat/UPDATE_MESSAGE', {
+              userId: this.currentUser.id,
+              chatId,
+              messageIndex: errorMessageIndex,
+              updates: {
+                content: `❌ **오류 발생**: ${error.message}\n\n다음을 확인해주세요:\n- API 키가 올바른지 확인\n- 네트워크 연결 상태 확인\n- 선택된 모델이 사용 가능한지 확인`,
+                isStreaming: false
+              }
+            })
+          }
         }
       } finally {
         this.isLoading = false
@@ -243,34 +400,30 @@ export default {
       this.sendMessage()
     },
 
-    addMessage(messageData) {
-      const message = {
-        id: this.messageId++,
-        ...messageData
-      }
-      this.messages.push(message)
-      this.$nextTick(() => {
-        this.scrollToBottom()
-      })
-    },
-
     clearChat() {
-      this.messages = []
-      this.messageId = 1
-      this.addWelcomeMessage()
+      if (this.getCurrentChat) {
+        this.$store.commit('chat/UPDATE_CHAT', {
+          userId: this.currentUser.id,
+          chatId: this.$store.getters['chat/currentChatId'],
+          updates: { messages: [] }
+        })
+      }
     },
 
     deleteMessage(messageId) {
-      const index = this.messages.findIndex(msg => msg.id === messageId)
-      if (index !== -1) {
-        this.messages.splice(index, 1)
+      const messageIndex = this.safeCurrentMessages.findIndex(msg => msg.id === messageId)
+      if (messageIndex !== -1) {
+        this.$store.dispatch('chat/deleteMessage', {
+          chatId: this.$store.getters['chat/currentChatId'],
+          messageIndex
+        })
       }
     },
 
     async refreshMessage(messageId) {
       // AI 메시지인지 확인
-      const messageIndex = this.messages.findIndex(msg => msg.id === messageId)
-      if (messageIndex === -1 || this.messages[messageIndex].isUser) {
+      const messageIndex = this.safeCurrentMessages.findIndex(msg => msg.id === messageId)
+      if (messageIndex === -1 || this.safeCurrentMessages[messageIndex].sender === 'user') {
         return
       }
 
@@ -283,8 +436,8 @@ export default {
       // 해당 메시지의 이전 사용자 메시지 찾기
       let userMessage = ''
       for (let i = messageIndex - 1; i >= 0; i--) {
-        if (this.messages[i].isUser) {
-          userMessage = this.messages[i].content
+        if (this.safeCurrentMessages[i].sender === 'user') {
+          userMessage = this.safeCurrentMessages[i].content
           break
         }
       }
@@ -296,17 +449,26 @@ export default {
 
       // 로딩 상태로 변경
       this.isLoading = true
-      this.messages[messageIndex].content = ''
-      this.messages[messageIndex].isStreaming = true
+      const chatId = this.$store.getters['chat/currentChatId']
+      
+      this.$store.commit('chat/UPDATE_MESSAGE', {
+        userId: this.currentUser.id,
+        chatId,
+        messageIndex,
+        updates: {
+          content: '',
+          isStreaming: true
+        }
+      })
 
       try {
         // 대화 컨텍스트 준비 (새로고침할 메시지 이전까지)
-        const conversationMessages = this.messages
+        const conversationMessages = this.safeCurrentMessages
           .slice(0, messageIndex)
           .filter(msg => !msg.isStreaming)
           .slice(-10)
           .map(msg => ({
-            role: msg.isUser ? 'user' : 'assistant',
+            role: msg.sender === 'user' ? 'user' : 'assistant',
             content: msg.content
           }))
 
@@ -322,7 +484,15 @@ export default {
           this.selectedModel,
           (chunk) => {
             // AI 메시지 내용 업데이트
-            this.messages[messageIndex].content += chunk
+            const currentMessage = this.safeCurrentMessages[messageIndex]
+            this.$store.commit('chat/UPDATE_MESSAGE', {
+              userId: this.currentUser.id,
+              chatId,
+              messageIndex,
+              updates: {
+                content: currentMessage.content + chunk
+              }
+            })
             this.$nextTick(() => {
               this.scrollToBottom()
             })
@@ -330,15 +500,29 @@ export default {
         )
 
         // 스트리밍 완료
-        this.messages[messageIndex].isStreaming = false
-        this.messages[messageIndex].timestamp = new Date()
+        this.$store.commit('chat/UPDATE_MESSAGE', {
+          userId: this.currentUser.id,
+          chatId,
+          messageIndex,
+          updates: {
+            isStreaming: false,
+            timestamp: new Date().toISOString()
+          }
+        })
 
       } catch (error) {
         console.error('AI API Refresh Error:', error)
         
         // 오류 메시지로 업데이트
-        this.messages[messageIndex].content = `❌ **새로고침 오류**: ${error.message}\n\n다음을 확인해주세요:\n- API 키가 올바른지 확인\n- 네트워크 연결 상태 확인\n- 선택된 모델이 사용 가능한지 확인`
-        this.messages[messageIndex].isStreaming = false
+        this.$store.commit('chat/UPDATE_MESSAGE', {
+          userId: this.currentUser.id,
+          chatId,
+          messageIndex,
+          updates: {
+            content: `❌ **새로고침 오류**: ${error.message}\n\n다음을 확인해주세요:\n- API 키가 올바른지 확인\n- 네트워크 연결 상태 확인\n- 선택된 모델이 사용 가능한지 확인`,
+            isStreaming: false
+          }
+        })
       } finally {
         this.isLoading = false
         this.$nextTick(() => {
@@ -364,23 +548,21 @@ export default {
       this.sendMessage()
     },
 
-    addWelcomeMessage() {
-      this.addMessage({
-        content: `안녕하세요! 👋\n\n저는 **실제 AI 모델**과 연결된 채팅봇입니다.\n\n**사용 가능한 모델:**\n- GPT-4.1 Mini (OpenAI)\n- GPT-4o Mini (OpenAI)\n- Claude Haiku 3.5 (Anthropic)\n- Sonnet 3 (Anthropic)\n\n**기능:**\n- 📝 마크다운 문법 지원\n- 💻 코드 하이라이팅\n- 🔄 실시간 스트리밍 응답\n- 📱 반응형 디자인\n\n${this.apiStatus.isValid ? '✅ API가 준비되었습니다. 아무거나 물어보세요!' : '⚠️ API 키를 설정해주세요 (.env 파일)'}`,
-        isUser: false,
-        timestamp: new Date()
-      })
-    },
-
     showApiKeyError() {
-      this.addMessage({
-        content: `❌ **API 키 오류**\n\n다음을 확인해주세요:\n\n1. 프로젝트 루트에 \`.env\` 파일이 있는지 확인\n2. \`.env\` 파일에 다음 내용이 포함되어 있는지 확인:\n\n\`\`\`\nVUE_APP_OPENAI_API_KEY=your_openai_key_here\nVUE_APP_ANTHROPIC_API_KEY=your_anthropic_key_here\n\`\`\`\n\n3. API 키가 유효한지 확인\n4. 개발 서버를 재시작해주세요 (\`npm run serve\`)`,
-        isUser: false,
-        timestamp: new Date()
-      })
+      const chatId = this.$store.getters['chat/currentChatId']
+      if (chatId) {
+        this.addMessage({
+          chatId,
+          message: {
+            content: `❌ **API 키 오류**\n\n다음을 확인해주세요:\n\n1. 프로젝트 루트에 \`.env\` 파일이 있는지 확인\n2. \`.env\` 파일에 다음 내용이 포함되어 있는지 확인:\n\n\`\`\`\nVUE_APP_OPENAI_API_KEY=your_openai_key_here\nVUE_APP_ANTHROPIC_API_KEY=your_anthropic_key_here\n\`\`\`\n\n3. API 키가 유효한지 확인\n4. 개발 서버를 재시작해주세요 (\`npm run serve\`)`,
+            sender: 'ai',
+            model: 'system'
+          }
+        })
+      }
     },
 
-    validateApiKeys() {
+    checkApiKeys() {
       try {
         const validation = apiService.validateApiKeys()
         this.apiStatus = validation
@@ -400,14 +582,6 @@ export default {
         this.scrollToBottom()
       })
     }
-  },
-
-  mounted() {
-    // API 키 검증
-    this.validateApiKeys()
-    
-    // Welcome message
-    this.addWelcomeMessage()
   }
 }
 </script>

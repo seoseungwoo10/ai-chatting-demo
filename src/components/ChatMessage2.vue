@@ -3,7 +3,7 @@
     <!-- Avatar -->
     <div class="avatar-container">
       <div class="avatar" :class="avatarClass">
-        {{ message.isUser ? 'U' : 'AI' }}
+        {{ isUser ? 'U' : 'AI' }}
       </div>
     </div>
 
@@ -11,7 +11,7 @@
     <div class="message-content">
       <div class="message-header">
         <span class="user-name" :class="nameClass">
-          {{ message.isUser ? '사용자' : 'AI 어시스턴트' }}
+          {{ isUser ? '사용자' : 'AI 어시스턴트' }}
         </span>
         <span class="timestamp">
           {{ formatTime(message.timestamp) }}
@@ -20,7 +20,7 @@
       
       <div class="message-bubble prose" :class="bubbleClass">
         <!-- Loading State for AI messages -->
-        <div v-if="!message.isUser && message.isStreaming && !message.content" class="flex items-center space-x-2 py-2">
+        <div v-if="!isUser && message.isStreaming && !message.content" class="flex items-center space-x-2 py-2">
           <div class="flex space-x-1">
             <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
             <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
@@ -38,17 +38,17 @@
         <button
           @click="copyMessage"
           class="action-btn copy-btn"
-          :class="{ 'user-copy-btn': message.isUser }"
+          :class="{ 'user-copy-btn': isUser }"
           title="메시지 복사"
         >
-          <svg class="icon" :class="message.isUser ? 'user-icon' : 'ai-icon'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="icon" :class="isUser ? 'user-icon' : 'ai-icon'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
           </svg>
         </button>
         
         <!-- Delete Button (only for AI messages) -->
         <button
-          v-if="!message.isUser"
+          v-if="!isUser"
           @click="deleteMessage"
           class="action-btn delete-btn"
           title="메시지 삭제"
@@ -60,7 +60,7 @@
         
         <!-- Refresh Button (only for AI messages) -->
         <button
-          v-if="!message.isUser"
+          v-if="!isUser"
           @click="refreshMessage"
           class="action-btn refresh-btn"
           title="답변 새로고침"
@@ -87,17 +87,20 @@ export default {
     }
   },
   computed: {
+    isUser() {
+      return this.message.sender === 'user'
+    },
     messageClass() {
-      return this.message.isUser ? 'user-message' : 'ai-message'
+      return this.isUser ? 'user-message' : 'ai-message'
     },
     avatarClass() {
-      return this.message.isUser ? 'user-avatar' : 'ai-avatar'
+      return this.isUser ? 'user-avatar' : 'ai-avatar'
     },
     nameClass() {
-      return this.message.isUser ? 'user-name-text' : 'ai-name-text'
+      return this.isUser ? 'user-name-text' : 'ai-name-text'
     },
     bubbleClass() {
-      return this.message.isUser ? 'user-bubble' : 'ai-bubble'
+      return this.isUser ? 'user-bubble' : 'ai-bubble'
     },
     renderedContent() {
       return this.renderMarkdown(this.message.content)
@@ -125,7 +128,7 @@ export default {
         let html = marked.parse(content)
         
         // Apply custom styling for user messages (white text)
-        if (this.message.isUser) {
+        if (this.isUser) {
           html = html.replace(/<code/g, '<code style="background-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.95); padding: 2px 4px; border-radius: 3px;"')
           html = html.replace(/<pre/g, '<pre style="background-color: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 12px;"')
           html = html.replace(/<blockquote/g, '<blockquote style="border-left: 4px solid rgba(255,255,255,0.5); color: rgba(255,255,255,0.9); margin: 8px 0; padding-left: 12px; font-style: italic;"')
@@ -213,6 +216,23 @@ export default {
     refreshMessage() {
       // Emit event to parent component to handle refresh
       this.$emit('refresh-message', this.message.id)
+    }
+  },
+  
+  watch: {
+    'message.content': {
+      handler() {
+        // 컨텐츠 변경 시 리렌더링 트리거
+        this.$forceUpdate()
+      }
+    },
+    
+    message: {
+      handler() {
+        // 메시지 객체 변경 시 리렌더링 트리거
+        this.$forceUpdate()
+      },
+      deep: true
     }
   }
 }
