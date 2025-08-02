@@ -8,6 +8,10 @@ const state = {
 const mutations = {
   SET_CURRENT_CHAT(state, chatId) {
     state.currentChatId = chatId
+    // 루트 스토어를 통해 auth 모듈의 lastChatId 업데이트
+    if (chatId) {
+      this.dispatch('auth/updateLastChatId', chatId, { root: true })
+    }
   },
   
   ADD_CHAT(state, { userId, chat }) {
@@ -94,6 +98,25 @@ const mutations = {
 }
 
 const actions = {
+  // 마지막 채팅방 복원
+  restoreLastChat({ commit, getters, rootGetters }) {
+    const userId = rootGetters['auth/currentUser']?.id
+    const lastChatId = rootGetters['auth/currentUser']?.lastChatId
+    
+    if (!userId || !lastChatId) {
+      return false
+    }
+    
+    // 해당 채팅방이 존재하는지 확인
+    const chat = getters.getChatById(lastChatId)
+    if (chat) {
+      commit('SET_CURRENT_CHAT', lastChatId)
+      return true
+    }
+    
+    return false
+  },
+
   // 새 채팅 생성
   createChat({ commit, rootGetters }, { title = '새로운 채팅' } = {}) {
     const userId = rootGetters['auth/currentUser']?.id

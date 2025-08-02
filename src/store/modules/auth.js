@@ -75,7 +75,8 @@ const actions = {
         preferences: {
           defaultModel: 'gpt-4o-mini',
           theme: 'light'
-        }
+        },
+        lastChatId: null  // 마지막 접근한 채팅방 ID 추가
       }
       
       commit('ADD_USER', newUser)
@@ -145,7 +146,8 @@ const actions = {
       preferences: {
         defaultModel: 'gpt-4o-mini',
         theme: 'light'
-      }
+      },
+      lastChatId: null  // 마지막 접근한 채팅방 ID 추가
     }
     
     commit('SET_CURRENT_USER', guestUser)
@@ -198,6 +200,11 @@ const actions = {
     commit('UPDATE_USER', profileData)
   },
   
+  // 마지막 채팅방 ID 저장
+  updateLastChatId({ commit }, chatId) {
+    commit('UPDATE_USER', { lastChatId: chatId })
+  },
+  
   // 사용자 설정 업데이트
   updatePreferences({ commit }, preferences) {
     commit('UPDATE_USER', { preferences })
@@ -208,7 +215,8 @@ const getters = {
   isAuthenticated: state => state.isAuthenticated,
   currentUser: state => state.currentUser,
   userPreferences: state => state.currentUser ? state.currentUser.preferences : {},
-  isGuest: state => state.currentUser ? state.currentUser.isGuest || false : false
+  isGuest: state => state.currentUser ? state.currentUser.isGuest || false : false,
+  lastChatId: state => state.currentUser ? state.currentUser.lastChatId : null
 }
 
 export default {
