@@ -109,7 +109,8 @@
                   </optgroup>
                   <optgroup label="Anthropic">
                     <option value="claude-3-5-haiku-20241022">Claude Haiku 3.5</option>
-                    <option value="claude-3-5-sonnet-20241022">Sonnet 3</option>
+                    <option value="claude-3-5-sonnet-20241022">Sonnet 3.5</option>
+                    <option value="claude-3-7-sonnet-20250219">Sonnet 3.7</option>
                   </optgroup>
                 </select>
               </div>
@@ -122,20 +123,63 @@
               </div>
             </div>
             
+            <!-- 파일 업로드 영역 -->
+            <FileUpload
+              v-if="showFileUpload"
+              ref="fileUpload"
+              @file-uploaded="handleFileUploaded"
+              @file-removed="handleFileRemoved"
+              class="mb-4"
+            />
+            
             <div class="flex space-x-4">
               <div class="flex-1">
-                <textarea
-                  v-model="inputMessage"
-                  @keydown.enter="handleEnter"
-                  placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈, Enter로 전송)"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  rows="3"
-                ></textarea>
+                <div class="relative">
+                  <textarea
+                    v-model="inputMessage"
+                    @keydown.enter="handleEnter"
+                    placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈, Enter로 전송)"
+                    class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows="3"
+                  ></textarea>
+                  
+                  <!-- 파일 업로드 토글 버튼 -->
+                  <button
+                    @click="toggleFileUpload"
+                    class="absolute right-3 top-3 p-1 text-gray-400 hover:text-blue-600 focus:outline-none focus:text-blue-600 transition-colors"
+                    :class="{ 'text-blue-600': showFileUpload }"
+                    title="파일 첨부"
+                  >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                    </svg>
+                  </button>
+                </div>
+                
+                <!-- 첨부된 파일 미리보기 -->
+                <div v-if="attachedFiles.length > 0" class="mt-2 p-2 bg-blue-50 rounded-lg">
+                  <div class="text-xs text-blue-700 mb-1">첨부된 파일 ({{ attachedFiles.length }}개):</div>
+                  <div class="flex flex-wrap gap-1">
+                    <span 
+                      v-for="file in attachedFiles" 
+                      :key="file.id"
+                      class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                    >
+                      {{ file.name }}
+                      <button 
+                        @click="removeAttachedFile(file.id)"
+                        class="ml-1 text-blue-600 hover:text-blue-800"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </div>
+                </div>
               </div>
               <div class="flex flex-col space-y-2">
                 <button
                   @click="sendMessage"
-                  :disabled="!inputMessage.trim() || isLoading"
+                  :disabled="(!inputMessage.trim() && attachedFiles.length === 0) || isLoading"
                   class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span v-if="isLoading">전송 중...</span>
@@ -176,6 +220,7 @@ import { mapGetters, mapActions } from 'vuex'
 import ChatMessage2 from './components/ChatMessage2.vue'
 import ChatSidebar from './components/ChatSidebar.vue'
 import SearchSidebar from './components/SearchSidebar.vue'
+import FileUpload from './components/FileUpload.vue'
 import AuthModal from './components/auth/AuthModal.vue'
 import UserProfile from './components/auth/UserProfile.vue'
 import apiService from './services/apiService.js'
@@ -186,6 +231,7 @@ export default {
     ChatMessage2,
     ChatSidebar,
     SearchSidebar,
+    FileUpload,
     AuthModal,
     UserProfile
   },
@@ -196,6 +242,8 @@ export default {
       selectedModel: 'gpt-4o-mini',
       sidebarVisible: true, // 사이드바 표시 상태
       isSearchMode: false, // 검색 모드 상태
+      showFileUpload: false, // 파일 업로드 영역 표시 상태
+      attachedFiles: [], // 첨부된 파일 목록
       apiStatus: {
         isValid: false,
         errors: []
@@ -295,35 +343,28 @@ export default {
     async handleAuthSuccess() {
       this.initializeChat()
     },
-    
-    handleChatSelected(chatId) {
-      this.$store.commit('chat/SET_CURRENT_CHAT', chatId)
-      this.$nextTick(() => {
-        this.scrollToBottom()
-      })
-    },
-    
+
     handleSearchResult(result) {
       // 검색 결과에서 채팅방 선택 시
       this.$store.commit('chat/SET_CURRENT_CHAT', result.chatId)
-      
+
       // 검색 모드를 종료하고 채팅 모드로 전환
       // this.isSearchMode = false
-      
+
       this.$nextTick(() => {
         // 해당 메시지로 스크롤
         this.scrollToMessage(result.messageId)
       })
     },
-    
+
     scrollToMessage(messageId) {
       // 특정 메시지로 스크롤하는 기능
       this.$nextTick(() => {
         const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
         if (messageElement) {
-          messageElement.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'center' 
+          messageElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
           })
           // 메시지를 하이라이트
           messageElement.classList.add('highlight-message')
@@ -336,7 +377,14 @@ export default {
         }
       })
     },
-    
+
+    handleChatSelected(chatId) {
+      this.$store.commit('chat/SET_CURRENT_CHAT', chatId)
+      this.$nextTick(() => {
+        this.scrollToBottom()
+      })
+    },
+
     initializeChat() {
       // 먼저 마지막 채팅방 복원 시도
       const restored = this.restoreLastChat()
@@ -348,7 +396,11 @@ export default {
     },
 
     async sendMessage() {
-      if (!this.inputMessage.trim() || this.isLoading) return
+      const messageText = this.inputMessage.trim()
+      const hasFiles = this.attachedFiles.length > 0
+      
+      if (!messageText && !hasFiles) return
+      if (this.isLoading) return
 
       // 인증 체크
       if (!this.isAuthenticated) {
@@ -376,16 +428,20 @@ export default {
         await this.$nextTick()
       }
 
-      // 사용자 메시지 추가
-      const userMessage = this.inputMessage
+      // 첨부 파일 정보 포함한 메시지 구성
+      let fullMessage = messageText
+      if (hasFiles) {
+        fullMessage += this.formatAttachedFilesForAI()
+      }
 
       try {
         const addedMessage = await this.addMessage({
           chatId: currentChatId,
           message: {
-            content: userMessage,
+            content: fullMessage,
             sender: 'user',
-            model: this.selectedModel
+            model: this.selectedModel,
+            attachedFiles: hasFiles ? [...this.attachedFiles] : undefined
           }
         })
         
@@ -393,14 +449,26 @@ export default {
           throw new Error('사용자 메시지 추가에 실패했습니다.')
         }
 
+        // 입력 필드와 첨부 파일 초기화
         this.inputMessage = ''
+        this.attachedFiles = []
+        
+        // 파일 업로드 컴포넌트 초기화
+        if (this.$refs.fileUpload) {
+          this.$refs.fileUpload.clearFiles()
+        }
+        
+        // 파일 업로드 영역 숨기기
+        if (this.showFileUpload && hasFiles) {
+          this.showFileUpload = false
+        }
 
-        // AI에게 전송
-        await this.sendToAI(userMessage, currentChatId)
+        // AI에게 전송 (원본 메시지가 아닌 파일 정보가 포함된 메시지 전송)
+        await this.sendToAI(fullMessage, currentChatId)
       } catch (error) {
         console.error('메시지 전송 중 오류:', error)
-        // 입력 메시지 복원
-        this.inputMessage = this.inputMessage || userMessage
+        // 입력 메시지 복원 (파일은 복원하지 않음)
+        this.inputMessage = this.inputMessage || messageText
       }
     },
 
@@ -709,6 +777,65 @@ export default {
           errors: ['API 서비스 초기화 실패']
         }
       }
+    },
+
+    // 파일 업로드 관련 메서드들
+    toggleFileUpload() {
+      this.showFileUpload = !this.showFileUpload
+      
+      // 파일 업로드 영역을 숨길 때 업로드된 파일들도 정리
+      if (!this.showFileUpload && this.$refs.fileUpload) {
+        this.$refs.fileUpload.clearFiles()
+      }
+    },
+
+    handleFileUploaded(fileInfo) {
+      // 파일이 업로드 완료되면 첨부 파일 목록에 추가
+      const existingIndex = this.attachedFiles.findIndex(f => f.id === fileInfo.id)
+      if (existingIndex === -1) {
+        this.attachedFiles.push(fileInfo)
+      }
+      
+      console.log('파일 업로드 완료:', fileInfo)
+    },
+
+    handleFileRemoved(fileId) {
+      // 파일이 제거되면 첨부 파일 목록에서도 제거
+      const index = this.attachedFiles.findIndex(f => f.id === fileId)
+      if (index !== -1) {
+        this.attachedFiles.splice(index, 1)
+      }
+    },
+
+    removeAttachedFile(fileId) {
+      // 첨부 파일 미리보기에서 파일 제거
+      this.handleFileRemoved(fileId)
+      
+      // FileUpload 컴포넌트에서도 제거
+      if (this.$refs.fileUpload) {
+        this.$refs.fileUpload.removeFile(fileId)
+      }
+    },
+
+    formatAttachedFilesForAI() {
+      // AI에게 전송할 때 첨부 파일 정보 포맷팅
+      if (this.attachedFiles.length === 0) return ''
+      
+      let fileContext = '\n\n--- 첨부된 파일 ---\n'
+      
+      for (const file of this.attachedFiles) {
+        fileContext += `\n**파일: ${file.name}** (${file.extension.toUpperCase()})\n`
+        
+        if (file.type === 'image' && file.content) {
+          fileContext += '[이미지가 첨부되었습니다]\n'
+        } else if (file.type === 'text' && file.content) {
+          fileContext += `내용:\n${file.content}\n`
+        } else if (file.type === 'document') {
+          fileContext += `[${file.extension.toUpperCase()} 문서가 첨부되었습니다]\n`
+        }
+      }
+      
+      return fileContext
     }
   },
 

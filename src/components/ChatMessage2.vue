@@ -23,6 +23,48 @@
       </div>
       
       <div class="message-bubble prose" :class="bubbleClass">
+        <!-- 첨부 파일 표시 (사용자 메시지) -->
+        <div v-if="isUser && message.attachedFiles && message.attachedFiles.length > 0" class="attached-files mb-3">
+          <div class="attached-files-header">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+            </svg>
+            <span>첨부된 파일 ({{ message.attachedFiles.length }}개)</span>
+          </div>
+          <div class="attached-files-list">
+            <div 
+              v-for="file in message.attachedFiles" 
+              :key="file.id" 
+              class="attached-file-item"
+            >
+              <!-- 파일 썸네일/아이콘 -->
+              <div class="file-thumbnail">
+                <img v-if="file.type === 'image' && file.thumbnail" 
+                     :src="file.thumbnail" 
+                     :alt="file.name"
+                     class="thumbnail-image" />
+                <div v-else class="file-icon" :class="`icon-${file.extension}`">
+                  <svg v-if="file.extension === 'pdf'" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                  </svg>
+                  <svg v-else-if="file.extension === 'txt' || file.extension === 'md'" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                  </svg>
+                  <svg v-else fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                  </svg>
+                </div>
+              </div>
+              
+              <!-- 파일 정보 -->
+              <div class="file-info">
+                <div class="file-name" :title="file.name">{{ file.name }}</div>
+                <div class="file-type">{{ file.extension.toUpperCase() }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Loading State for AI messages -->
         <div v-if="!isUser && message.isStreaming && !message.content" class="flex items-center space-x-2 py-2">
           <div class="flex space-x-1">
@@ -542,5 +584,99 @@ export default {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 첨부 파일 스타일 */
+.attached-files {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: #f9fafb;
+}
+
+.attached-files-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.attached-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attached-file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.file-thumbnail {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f3f4f6;
+  flex-shrink: 0;
+}
+
+.thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.file-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+}
+
+.file-icon.icon-pdf {
+  color: #ef4444;
+}
+
+.file-icon.icon-txt,
+.file-icon.icon-md {
+  color: #3b82f6;
+}
+
+.file-icon.icon-jpg,
+.file-icon.icon-png,
+.file-icon.icon-gif,
+.file-icon.icon-webp {
+  color: #10b981;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-type {
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
 }
 </style>
