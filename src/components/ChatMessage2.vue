@@ -1,5 +1,9 @@
 <template>
-  <div class="chat-message" :class="messageClass">
+  <div 
+    class="chat-message" 
+    :class="messageClass"
+    :data-message-id="message.id"
+  >
     <!-- Avatar -->
     <div class="avatar-container">
       <div class="avatar" :class="avatarClass">

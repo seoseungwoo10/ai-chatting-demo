@@ -8,12 +8,18 @@
 
     <!-- 메인 레이아웃 -->
     <div v-if="isAuthenticated" class="flex h-full">
-      <!-- 채팅 사이드바 -->
+      <!-- 채팅/검색 사이드바 -->
       <transition name="sidebar">
-        <ChatSidebar 
-          v-if="sidebarVisible"
-          @chat-selected="handleChatSelected" 
-        />
+        <div v-if="sidebarVisible">
+          <ChatSidebar 
+            v-if="!isSearchMode"
+            @chat-selected="handleChatSelected" 
+          />
+          <SearchSidebar 
+            v-else
+            @result-selected="handleSearchResult"
+          />
+        </div>
       </transition>
       
       <!-- 메인 채팅 영역 -->
@@ -31,6 +37,21 @@
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                  </svg>
+                </button>
+
+                <!-- 검색/채팅 모드 토글 버튼 -->
+                <button
+                  v-if="sidebarVisible"
+                  @click="toggleSearchMode"
+                  class="p-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors"
+                  :title="isSearchMode ? '채팅 목록 보기' : '메시지 검색'"
+                >
+                  <svg v-if="!isSearchMode" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                  </svg>
+                  <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.954 8.954 0 01-2.965-.516L3 20l.735-2.706A8.95 8.95 0 013 15c0-4.418 3.582-8 8-8s8 3.582 8 5z"></path>
                   </svg>
                 </button>
                 
@@ -154,6 +175,7 @@
 import { mapGetters, mapActions } from 'vuex'
 import ChatMessage2 from './components/ChatMessage2.vue'
 import ChatSidebar from './components/ChatSidebar.vue'
+import SearchSidebar from './components/SearchSidebar.vue'
 import AuthModal from './components/auth/AuthModal.vue'
 import UserProfile from './components/auth/UserProfile.vue'
 import apiService from './services/apiService.js'
@@ -163,6 +185,7 @@ export default {
   components: {
     ChatMessage2,
     ChatSidebar,
+    SearchSidebar,
     AuthModal,
     UserProfile
   },
@@ -172,6 +195,7 @@ export default {
       isLoading: false,
       selectedModel: 'gpt-4o-mini',
       sidebarVisible: true, // 사이드바 표시 상태
+      isSearchMode: false, // 검색 모드 상태
       apiStatus: {
         isValid: false,
         errors: []
@@ -249,11 +273,22 @@ export default {
       this.sidebarVisible = !this.sidebarVisible
     },
     
+    toggleSearchMode() {
+      this.isSearchMode = !this.isSearchMode
+    },
+    
     handleKeydown(event) {
       // Ctrl + B 또는 Cmd + B로 사이드바 토글
       if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
         event.preventDefault()
         this.toggleSidebar()
+      }
+      // Ctrl + F 또는 Cmd + F로 검색 모드 토글
+      if ((event.ctrlKey || event.metaKey) && event.key === 'f') {
+        event.preventDefault()
+        if (this.sidebarVisible) {
+          this.toggleSearchMode()
+        }
       }
     },
     
@@ -265,6 +300,40 @@ export default {
       this.$store.commit('chat/SET_CURRENT_CHAT', chatId)
       this.$nextTick(() => {
         this.scrollToBottom()
+      })
+    },
+    
+    handleSearchResult(result) {
+      // 검색 결과에서 채팅방 선택 시
+      this.$store.commit('chat/SET_CURRENT_CHAT', result.chatId)
+      
+      // 검색 모드를 종료하고 채팅 모드로 전환
+      // this.isSearchMode = false
+      
+      this.$nextTick(() => {
+        // 해당 메시지로 스크롤
+        this.scrollToMessage(result.messageId)
+      })
+    },
+    
+    scrollToMessage(messageId) {
+      // 특정 메시지로 스크롤하는 기능
+      this.$nextTick(() => {
+        const messageElement = document.querySelector(`[data-message-id="${messageId}"]`)
+        if (messageElement) {
+          messageElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          })
+          // 메시지를 하이라이트
+          messageElement.classList.add('highlight-message')
+          setTimeout(() => {
+            messageElement.classList.remove('highlight-message')
+          }, 2000)
+        } else {
+          // 메시지가 없으면 맨 아래로 스크롤
+          this.scrollToBottom()
+        }
       })
     },
     
@@ -705,7 +774,14 @@ export default {
 }
 
 .sidebar-enter-to, .sidebar-leave-from {
-  transform: translateX(10%);
+  transform: translateX(0);
   opacity: 1;
+}
+
+/* 검색된 메시지 하이라이트 효과 */
+.highlight-message {
+  background-color: #fef3c7 !important;
+  border-left: 4px solid #f59e0b !important;
+  transition: background-color 0.3s ease, border-left 0.3s ease;
 }
 </style>
