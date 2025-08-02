@@ -3,7 +3,7 @@
     <!-- 사용자 프로필 버튼 -->
     <button
       @click="toggleDropdown"
-      class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      class="flex items-center space-x-2 p-2 rounded-lg hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
     >
       <img
         :src="currentUser.avatar"
@@ -11,7 +11,7 @@
         class="w-8 h-8 rounded-full"
         @error="handleAvatarError"
       />
-      <span class="text-sm font-medium text-gray-700 hidden sm:block">
+      <span class="text-sm font-medium text-white-700 hidden sm:block">
         {{ currentUser.nickname }}
       </span>
       <svg
@@ -316,4 +316,5 @@ export default {
 .border-gray-300 {
   color: rgb(55 65 81)
 }
+
 </style>
