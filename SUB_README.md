@@ -200,3 +200,87 @@
   </div>
 </template>
 ```
+
+---
+
+## 📎 4. 파일 업로드 (우선순위: 중간)
+
+### 📖 기능 설명
+
+App.vue 의 Input Area 영역에 
+이미지 및 문서 파일을 업로드하여 AI와 함께 분석 할 수 있는 기능
+
+### 🎯 목표
+- 시각적 컨텐츠 분석
+- 문서 요약 및 분석
+- 멀티모달 AI 활용
+
+### 📋 요구사항
+
+#### 기능적 요구사항
+1. **파일 업로드**
+   - 드래그 앤 드롭 지원
+   - 클릭하여 파일 선택
+   - 다중 파일 업로드
+
+2. **지원 파일 형식**
+   - 이미지: JPG, PNG, GIF, WEBP
+   - 문서: PDF, TXT, MD, DOCX
+   - 최대 파일 크기: 10MB
+
+3. **파일 미리보기**
+   - 이미지 썸네일 표시
+   - 파일명 및 크기 정보
+   - 업로드 진행률 표시
+
+4. **AI 분석**
+   - 이미지 설명 생성
+   - 문서 내용 요약
+   - 파일 기반 질문 답변
+
+#### 비기능적 요구사항
+- 업로드 속도: 1MB당 < 2초
+- 동시 업로드: 최대 5개
+- 저장 용량: 사용자당 100MB
+
+### 🛠️ 기술 스택
+- **파일 처리**: File API
+- **이미지 처리**: Canvas API
+- **PDF 처리**: PDF.js
+- **압축**: browser-image-compression
+
+### 📐 UI/UX 설계
+
+#### 파일 업로드 영역
+```vue
+<template>
+  <div class="file-upload-area"
+       @dragover.prevent
+       @drop.prevent="handleFileDrop"
+       :class="{ 'drag-active': isDragActive }">
+    
+    <!-- 드래그 앤 드롭 영역 -->
+    <div class="upload-zone">
+      <svg class="upload-icon">📎</svg>
+      <p>파일을 드래그하거나 클릭하여 업로드</p>
+      <input type="file" 
+             ref="fileInput"
+             @change="handleFileSelect"
+             multiple
+             accept=".jpg,.png,.pdf,.txt,.md" />
+    </div>
+    
+    <!-- 업로드된 파일 목록 -->
+    <div class="uploaded-files">
+      <div v-for="file in uploadedFiles" :key="file.id" class="file-item">
+        <img v-if="file.type === 'image'" :src="file.thumbnail" class="file-thumbnail" />
+        <div class="file-info">
+          <span class="file-name">{{ file.name }}</span>
+          <span class="file-size">{{ formatFileSize(file.size) }}</span>
+        </div>
+        <button @click="removeFile(file.id)" class="remove-btn">×</button>
+      </div>
+    </div>
+  </div>
+</template>
+```
