@@ -198,18 +198,22 @@ export default {
   },
   methods: {
     ...mapActions('auth', ['restoreSession']),
-    ...mapActions('chat', ['createChat', 'addMessage', 'deleteMessage']),
+    ...mapActions('chat', ['createChat', 'addMessage', 'deleteMessage', 'restoreLastChat']),
     
     async handleAuthSuccess(user) {
       this.initializeChat()
     },
     
     initializeChat() {
-      // 현재 채팅이 없으면 새로 생성
-      if (!this.getCurrentChat) {
+      // 먼저 마지막 채팅방 복원 시도
+      const restored = this.restoreLastChat()
+      
+      // 복원되지 않은 경우에만 새 채팅방 생성
+      if (!restored && !this.getCurrentChat) {
         this.createChat()
       }
     },
+
     async sendMessage() {
       if (!this.inputMessage.trim() || this.isLoading) return
 
@@ -227,7 +231,7 @@ export default {
 
       // 현재 채팅이 없으면 생성
       let currentChatId = this.$store.getters['chat/currentChatId']
-      
+
       if (!currentChatId) {
         currentChatId = await this.createChat()
         if (!currentChatId) {

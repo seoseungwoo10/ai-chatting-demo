@@ -14,15 +14,20 @@ Vue.js 2 기반의 **실제 AI 모델 연동** 채팅 인터페이스로 마크�
 - 📋 **메시지 관리**: 복사하기, 삭제, 새로고침 기능 지원
 - ⚙️ **모델 선택**: 드롭다운으로 AI 모델 실시간 변경
 - 🔐 **환경 변수**: .env 파일을 통한 안전한 API 키 관리
+- 👤 **사용자 인증**: 회원가입, 로그인, 게스트 로그인 지원
+- 💾 **채팅 세션 복원**: 새로고침 시 마지막 채팅방 자동 복원
 
 ## 기술 스택
 
 - **Frontend**: Vue.js 2.6.14
+- **상태 관리**: Vuex 3.6.2 (auth, chat 모듈)
 - **스타일링**: Tailwind CSS 3.3.2
 - **마크다운**: marked 4.3.0
 - **코드 하이라이팅**: highlight.js 11.8.0
 - **AI API**: OpenAI GPT, Anthropic Claude
 - **HTTP 클라이언트**: Fetch API (스트리밍 지원)
+- **인증**: 로컬 스토리지 기반 사용자 관리
+- **암호화**: crypto-js (비밀번호 해싱)
 - **빌드 도구**: Vue CLI 5.0.0
 
 ## 프로젝트 설정
@@ -72,6 +77,12 @@ npm run build
 - **Claude 3.5 Sonnet**: 균형잡힌 성능의 범용 모델
 
 ## 사용법
+
+### 사용자 인증
+1. **회원가입**: 이메일과 비밀번호로 새 계정 생성
+2. **로그인**: 기존 계정으로 로그인
+3. **게스트 로그인**: 임시 계정으로 빠른 시작
+4. **세션 유지**: 새로고침 시 자동 로그인 및 마지막 채팅방 복원
 
 ### 기본 사용
 1. **API 키 설정**: `.env` 파일에 OpenAI 또는 Anthropic API 키를 설정하세요
@@ -162,14 +173,22 @@ import 'highlight.js/styles/vs2015.css'
 ```
 src/
 ├── components/
-│   └── ChatMessage2.vue   # 채팅 메시지 컴포넌트 (순수 CSS 버전)
+│   ├── auth/
+│   │   ├── AuthModal.vue     # 인증 모달 (로그인/회원가입)
+│   │   └── UserProfile.vue   # 사용자 프로필 컴포넌트
+│   └── ChatMessage2.vue      # 채팅 메시지 컴포넌트
 ├── services/
-│   └── apiService.js      # AI API 통신 서비스
+│   └── apiService.js         # AI API 통신 서비스
+├── store/
+│   ├── modules/
+│   │   ├── auth.js          # 사용자 인증 Vuex 모듈
+│   │   └── chat.js          # 채팅 관리 Vuex 모듈
+│   └── index.js             # Vuex 스토어 설정
 ├── styles/
-│   └── tailwind.css       # Tailwind CSS 설정
-├── App.vue                # 메인 앱 컴포넌트
-├── main.js               # 앱 진입점
-└── .env                  # 환경 변수 파일 (API 키)
+│   └── tailwind.css          # Tailwind CSS 설정
+├── App.vue                   # 메인 앱 컴포넌트
+├── main.js                  # 앱 진입점
+└── .env                     # 환경 변수 파일 (API 키)
 ```
 
 ## 핵심 컴포넌트
@@ -179,12 +198,37 @@ src/
 - AI 모델 선택 기능
 - 메시지 상태 관리
 - API 통신 조율
+- 사용자 인증 상태 관리
+
+### 인증 컴포넌트
+#### AuthModal.vue
+- 로그인/회원가입 모달
+- 이메일/비밀번호 유효성 검사
+- 게스트 로그인 기능
+
+#### UserProfile.vue
+- 사용자 프로필 표시
+- 로그아웃 기능
+- 사용자 설정 관리
 
 ### ChatMessage2.vue  
 - 개별 채팅 메시지 렌더링
 - 마크다운 파싱 및 코드 하이라이팅
 - 메시지 액션 버튼 (복사, 삭제, 새로고침)
 - 스트리밍 중 로딩 상태 표시
+
+### Vuex 모듈
+#### auth.js
+- 사용자 인증 상태 관리
+- 회원가입, 로그인, 로그아웃 액션
+- 세션 복원 및 마지막 채팅방 기억
+- 사용자 설정 관리
+
+#### chat.js
+- 채팅방 및 메시지 상태 관리
+- 메시지 추가, 수정, 삭제
+- 채팅방 생성 및 관리
+- 마지막 채팅방 복원
 
 ### apiService.js
 - OpenAI 및 Anthropic API 통신
@@ -248,7 +292,8 @@ export default {
 
 ### 🚀 단기 개선사항 (1-2주)
 - [x] **사용자 인증**: 사용자별 채팅 히스토리 저장
-- [ ] **채팅 세션 관리**: 여러 채팅방 생성 및 관리
+- [x] **채팅 세션 복원**: 마지막 접근 채팅방 자동 복원
+- [ ] **여러 채팅방 생성 및 관리**: 채팅방 목록 UI 및 관리 기능
 - [ ] **메시지 검색**: 채팅 히스토리 내 키워드 검색
 - [ ] **파일 업로드**: 이미지 및 문서 파일 업로드 지원
 - [ ] **다크 모드**: 어두운 테마 지원
@@ -279,6 +324,52 @@ export default {
 - [ ] **성능 모니터링**: API 응답 시간 및 에러 추적
 - [ ] **A/B 테스팅**: UI/UX 개선을 위한 실험 프레임워크
 - [ ] **피드백 시스템**: 사용자 만족도 및 개선 요청 수집
+
+## 데이터 저장 구조
+
+### localStorage 키
+- `ai_chat_users`: 사용자 정보 및 설정
+- `ai_chat_histories`: 사용자별 채팅 히스토리
+- `ai_chat_sessions`: 사용자 세션 정보
+
+### sessionStorage 키
+- `ai_chat_current_session`: 현재 로그인 세션
+
+### 사용자 데이터 구조
+```javascript
+{
+  id: "user_xxx",
+  email: "user@example.com",
+  nickname: "사용자명",
+  avatar: "아바타 URL",
+  lastChatId: "chat_xxx",  // 마지막 접근 채팅방
+  preferences: {
+    defaultModel: "gpt-4o-mini",
+    theme: "light"
+  },
+  createdAt: "2025-08-02T...",
+  lastLoginAt: "2025-08-02T..."
+}
+```
+
+### 채팅 데이터 구조
+```javascript
+{
+  id: "chat_xxx",
+  title: "채팅 제목",
+  messages: [
+    {
+      id: "msg_xxx",
+      content: "메시지 내용",
+      sender: "user" | "ai",
+      timestamp: "2025-08-02T...",
+      model: "gpt-4o-mini"
+    }
+  ],
+  createdAt: "2025-08-02T...",
+  updatedAt: "2025-08-02T..."
+}
+```
 
 ## 데모 화면
 
