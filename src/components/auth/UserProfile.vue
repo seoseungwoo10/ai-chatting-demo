@@ -313,4 +313,7 @@ export default {
 .rotate-180 {
   transform: rotate(180deg);
 }
+.border-gray-300 {
+  color: rgb(55 65 81)
+}
 </style>

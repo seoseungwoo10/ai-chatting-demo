@@ -6,108 +6,143 @@
       @success="handleAuthSuccess"
     />
 
-    <div class="max-w-4xl mx-auto w-full h-full py-6 px-4 sm:px-6 lg:px-8 flex flex-col">
-      <div class="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col h-full">
-        <!-- Header -->
-        <div class="bg-blue-600 text-white px-6 py-4 flex-shrink-0">
-          <div class="flex justify-between items-center">
-            <div>
-              <h1 class="text-xl font-semibold">AI 채팅 데모</h1>
-              <p class="text-blue-100 text-sm">마크다운 지원 채팅창</p>
+    <!-- 메인 레이아웃 -->
+    <div v-if="isAuthenticated" class="flex h-full">
+      <!-- 채팅 사이드바 -->
+      <transition name="sidebar">
+        <ChatSidebar 
+          v-if="sidebarVisible"
+          @chat-selected="handleChatSelected" 
+        />
+      </transition>
+      
+      <!-- 메인 채팅 영역 -->
+      <div class="flex-1 flex flex-col min-w-0">
+        <div class="bg-white flex flex-col h-full">
+          <!-- Header -->
+          <div class="bg-blue-600 text-white px-6 py-4 flex-shrink-0">
+            <div class="flex justify-between items-center">
+              <div class="flex items-center space-x-3">
+                <!-- 사이드바 토글 버튼 -->
+                <button
+                  @click="toggleSidebar"
+                  class="p-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors"
+                  :title="sidebarVisible ? '사이드바 숨기기' : '사이드바 보기'"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                  </svg>
+                </button>
+                
+                <div>
+                  <h1 class="text-xl font-semibold">{{ getCurrentChat?.title || 'AI 채팅 데모' }}</h1>
+                  <p class="text-blue-100 text-sm">마크다운 지원 채팅창</p>
+                </div>
+              </div>
+              
+              <!-- 사용자 프로필 -->
+              <div class="text-white">
+                <UserProfile />
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Messages -->
+          <div
+            class="chat-container overflow-y-auto p-4 space-y-4 flex-1 min-h-0"
+            ref="chatContainer"
+          >
+            <div v-if="!safeCurrentMessages.length" class="flex items-center justify-center h-full text-gray-500">
+              <div class="text-center">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.954 8.954 0 01-2.965-.516L3 20l.735-2.706A8.95 8.95 0 013 15c0-4.418 3.582-8 8-8s8 3.582 8 5z"></path>
+                </svg>
+                <p class="text-lg">새로운 대화를 시작해보세요!</p>
+                <p class="text-sm text-gray-400 mt-2">아래에 메시지를 입력하거나 데모 버튼을 클릭하세요.</p>
+              </div>
             </div>
             
-            <!-- 사용자 프로필 (로그인된 경우) -->
-            <div v-if="isAuthenticated" class="text-white">
-              <UserProfile @create-account="showAuthModal = true" />
-            </div>
+            <ChatMessage2
+              v-for="message in safeCurrentMessages"
+              :key="message.id"
+              :message="message"
+              @delete-message="deleteMessage"
+              @refresh-message="refreshMessage"
+            />
           </div>
-        </div>
 
-        <!-- Chat Messages -->
-        <div
-          class="chat-container overflow-y-auto p-4 space-y-4 flex-1 min-h-0"
-          ref="chatContainer"
-        >
-          <ChatMessage2
-            v-for="message in safeCurrentMessages"
-            :key="message.id"
-            :message="message"
-            @delete-message="deleteMessage"
-            @refresh-message="refreshMessage"
-          />
-        </div>
-
-        <!-- Input Area -->
-        <div class="border-t border-gray-200 p-4 flex-shrink-0">
-          <!-- Model Selection Bar -->
-          <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
-            <div class="flex items-center space-x-3">
-              <label class="text-sm font-medium text-gray-700">AI 모델:</label>
-              <select 
-                v-model="selectedModel" 
-                class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                :disabled="isLoading"
-              >
-                <optgroup label="OpenAI">
-                  <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
-                  <option value="gpt-4o-mini">GPT-4o Mini</option>
-                </optgroup>
-                <optgroup label="Anthropic">
-                  <option value="claude-3-5-haiku-20241022">Claude Haiku 3.5</option>
-                  <option value="claude-3-5-sonnet-20241022">Sonnet 3</option>
-                </optgroup>
-              </select>
+          <!-- Input Area -->
+          <div class="border-t border-gray-200 p-4 flex-shrink-0">
+            <!-- Model Selection Bar -->
+            <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+              <div class="flex items-center space-x-3">
+                <label class="text-sm font-medium text-gray-700">AI 모델:</label>
+                <select 
+                  v-model="selectedModel" 
+                  class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  :disabled="isLoading"
+                >
+                  <optgroup label="OpenAI">
+                    <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                  </optgroup>
+                  <optgroup label="Anthropic">
+                    <option value="claude-3-5-haiku-20241022">Claude Haiku 3.5</option>
+                    <option value="claude-3-5-sonnet-20241022">Sonnet 3</option>
+                  </optgroup>
+                </select>
+              </div>
+              
+              <!-- API Status -->
+              <div class="flex items-center space-x-2">
+                <span class="text-xs text-gray-600">
+                  {{ apiStatus.isValid ? 'API 준비됨' : 'API 키 필요' }}
+                </span>
+              </div>
             </div>
             
-            <!-- API Status -->
-            <div class="flex items-center space-x-2">
-              <span class="text-xs text-gray-600">
-                {{ apiStatus.isValid ? 'API 준비됨' : 'API 키 필요' }}
-              </span>
+            <div class="flex space-x-4">
+              <div class="flex-1">
+                <textarea
+                  v-model="inputMessage"
+                  @keydown.enter="handleEnter"
+                  placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈, Enter로 전송)"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows="3"
+                ></textarea>
+              </div>
+              <div class="flex flex-col space-y-2">
+                <button
+                  @click="sendMessage"
+                  :disabled="!inputMessage.trim() || isLoading"
+                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span v-if="isLoading">전송 중...</span>
+                  <span v-else>전송</span>
+                </button>
+                <button
+                  @click="clearChat"
+                  class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  초기화
+                </button>
+              </div>
             </div>
           </div>
-          
-          <div class="flex space-x-4">
-            <div class="flex-1">
-              <textarea
-                v-model="inputMessage"
-                @keydown.enter="handleEnter"
-                placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈, Enter로 전송)"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                rows="3"
-              ></textarea>
-            </div>
-            <div class="flex flex-col space-y-2">
-              <button
-                @click="sendMessage"
-                :disabled="!inputMessage.trim() || isLoading"
-                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span v-if="isLoading">전송 중...</span>
-                <span v-else>전송</span>
-              </button>
-              <button
-                @click="clearChat"
-                class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-              >
-                초기화
-              </button>
-            </div>
-          </div>
-        </div>
 
-        <!-- Demo Buttons -->
-        <div class="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0">
-          <h3 class="text-sm font-medium text-gray-700 mb-2">데모 메시지:</h3>
-          <div class="flex flex-wrap gap-2">
-            <button
-              v-for="demo in demoMessages"
-              :key="demo.id"
-              @click="sendDemoMessage(demo)"
-              class="px-3 py-1 text-xs bg-white border border-gray-300 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {{ demo.title }}
-            </button>
+          <!-- Demo Buttons -->
+          <div class="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0">
+            <h3 class="text-sm font-medium text-gray-700 mb-2">데모 메시지:</h3>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="demo in demoMessages"
+                :key="demo.id"
+                @click="sendDemoMessage(demo)"
+                class="px-3 py-1 text-xs bg-white border border-gray-300 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {{ demo.title }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -118,6 +153,7 @@
 <script>
 import { mapGetters, mapActions } from 'vuex'
 import ChatMessage2 from './components/ChatMessage2.vue'
+import ChatSidebar from './components/ChatSidebar.vue'
 import AuthModal from './components/auth/AuthModal.vue'
 import UserProfile from './components/auth/UserProfile.vue'
 import apiService from './services/apiService.js'
@@ -126,6 +162,7 @@ export default {
   name: 'App',
   components: {
     ChatMessage2,
+    ChatSidebar,
     AuthModal,
     UserProfile
   },
@@ -134,6 +171,7 @@ export default {
       inputMessage: '',
       isLoading: false,
       selectedModel: 'gpt-4o-mini',
+      sidebarVisible: true, // 사이드바 표시 상태
       apiStatus: {
         isValid: false,
         errors: []
@@ -195,13 +233,39 @@ export default {
     if (this.isAuthenticated) {
       this.initializeChat()
     }
+    
+    // 키보드 단축키 이벤트 리스너 추가
+    document.addEventListener('keydown', this.handleKeydown)
+  },
+  beforeDestroy() {
+    // 키보드 이벤트 리스너 제거
+    document.removeEventListener('keydown', this.handleKeydown)
   },
   methods: {
     ...mapActions('auth', ['restoreSession']),
     ...mapActions('chat', ['createChat', 'addMessage', 'deleteMessage', 'restoreLastChat']),
     
-    async handleAuthSuccess(user) {
+    toggleSidebar() {
+      this.sidebarVisible = !this.sidebarVisible
+    },
+    
+    handleKeydown(event) {
+      // Ctrl + B 또는 Cmd + B로 사이드바 토글
+      if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
+        event.preventDefault()
+        this.toggleSidebar()
+      }
+    },
+    
+    async handleAuthSuccess() {
       this.initializeChat()
+    },
+    
+    handleChatSelected(chatId) {
+      this.$store.commit('chat/SET_CURRENT_CHAT', chatId)
+      this.$nextTick(() => {
+        this.scrollToBottom()
+      })
     },
     
     initializeChat() {
@@ -231,7 +295,7 @@ export default {
 
       // 현재 채팅이 없으면 생성
       let currentChatId = this.$store.getters['chat/currentChatId']
-
+      
       if (!currentChatId) {
         currentChatId = await this.createChat()
         if (!currentChatId) {
@@ -628,5 +692,20 @@ export default {
 
 .min-h-0 {
   min-height: 0;
+}
+
+/* 사이드바 애니메이션 */
+.sidebar-enter-active, .sidebar-leave-active {
+  transition: margin-right 1s ease-in-out;
+}
+
+.sidebar-enter-from, .sidebar-leave-to {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.sidebar-enter-to, .sidebar-leave-from {
+  transform: translateX(10%);
+  opacity: 1;
 }
 </style>

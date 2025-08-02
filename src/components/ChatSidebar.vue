@@ -30,7 +30,7 @@
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
               <h3 
-                v-if="!chat.editing"
+                v-if="editingChatId !== chat.id"
                 class="text-sm font-medium text-gray-900 truncate"
                 @dblclick="startEditing(chat)"
               >
@@ -154,6 +154,7 @@ export default {
   data() {
     return {
       editingTitle: '',
+      editingChatId: null, // 현재 편집 중인 채팅방 ID
       contextMenu: {
         show: false,
         x: 0,
@@ -209,7 +210,7 @@ export default {
     
     startEditing(chat) {
       this.closeMenus()
-      this.$set(chat, 'editing', true)
+      this.editingChatId = chat.id
       this.editingTitle = chat.title
       this.$nextTick(() => {
         this.$refs.titleInput?.[0]?.focus()
@@ -227,7 +228,7 @@ export default {
     },
     
     cancelEditing(chat) {
-      this.$set(chat, 'editing', false)
+      this.editingChatId = null
       this.editingTitle = ''
     },
     
@@ -301,6 +302,8 @@ export default {
 .chat-sidebar {
   width: 280px;
   min-width: 280px;
+  /* 부드러운 애니메이션을 위한 속성 */
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 .chat-item {

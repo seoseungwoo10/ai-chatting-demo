@@ -27,8 +27,13 @@ const mutations = {
   
   UPDATE_CHAT(state, { userId, chatId, updates }) {
     if (state.userChats[userId] && state.userChats[userId][chatId]) {
-      state.userChats[userId][chatId] = { ...state.userChats[userId][chatId], ...updates }
+      const chat = state.userChats[userId][chatId]
+      const updatedChat = { ...chat, ...updates, updatedAt: new Date().toISOString() }
+      Vue.set(state.userChats[userId], chatId, updatedChat)
       localStorage.setItem('ai_chat_histories', JSON.stringify(state.userChats))
+      
+      // 강제 반응성 트리거
+      state.userChats = { ...state.userChats }
     }
   },
   
@@ -133,8 +138,12 @@ const actions = {
       messages: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      isFavorite: false,  // 즐겨찾기 여부
+      color: null,        // 채팅방 색상
       settings: {
-        model: rootGetters['auth/userPreferences'].defaultModel || 'gpt-4o-mini'
+        model: rootGetters['auth/userPreferences'].defaultModel || 'gpt-4o-mini',
+        systemPrompt: '',  // 시스템 프롬프트
+        temperature: 0.7   // 온도 설정
       }
     }
     
@@ -170,6 +179,14 @@ const actions = {
     return messageWithId
   },
   
+  // 채팅 업데이트 (통합)
+  updateChat({ commit, rootGetters }, { chatId, updates }) {
+    const userId = rootGetters['auth/currentUser']?.id
+    if (!userId) return
+    
+    commit('UPDATE_CHAT', { userId, chatId, updates })
+  },
+
   // 채팅 제목 업데이트
   updateChatTitle({ commit, rootGetters }, { chatId, title }) {
     const userId = rootGetters['auth/currentUser']?.id
