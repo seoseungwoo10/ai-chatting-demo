@@ -1,17 +1,21 @@
 <template>
-  <div class="chat-message" :class="messageClass">
+  <div 
+    class="chat-message" 
+    :class="messageClass"
+    :data-message-id="message.id"
+  >
     <!-- Avatar -->
     <div class="avatar-container">
       <div class="avatar" :class="avatarClass">
-        {{ message.isUser ? 'U' : 'AI' }}
+        {{ isUser ? 'U' : 'AI' }}
       </div>
     </div>
 
     <!-- Message Content -->
     <div class="message-content">
-      <div class="message-header">
+      <div class="message-header" :class="messageClass">
         <span class="user-name" :class="nameClass">
-          {{ message.isUser ? '사용자' : 'AI 어시스턴트' }}
+          {{ isUser ? '사용자' : 'AI 어시스턴트' }}
         </span>
         <span class="timestamp">
           {{ formatTime(message.timestamp) }}
@@ -19,8 +23,50 @@
       </div>
       
       <div class="message-bubble prose" :class="bubbleClass">
+        <!-- 첨부 파일 표시 (사용자 메시지) -->
+        <div v-if="isUser && message.attachedFiles && message.attachedFiles.length > 0" class="attached-files mb-3">
+          <div class="attached-files-header">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+            </svg>
+            <span>첨부된 파일 ({{ message.attachedFiles.length }}개)</span>
+          </div>
+          <div class="attached-files-list">
+            <div 
+              v-for="file in message.attachedFiles" 
+              :key="file.id" 
+              class="attached-file-item"
+            >
+              <!-- 파일 썸네일/아이콘 -->
+              <div class="file-thumbnail">
+                <img v-if="file.type === 'image' && file.thumbnail" 
+                     :src="file.thumbnail" 
+                     :alt="file.name"
+                     class="thumbnail-image" />
+                <div v-else class="file-icon" :class="`icon-${file.extension}`">
+                  <svg v-if="file.extension === 'pdf'" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                  </svg>
+                  <svg v-else-if="file.extension === 'txt' || file.extension === 'md'" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                  </svg>
+                  <svg v-else fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+                  </svg>
+                </div>
+              </div>
+              
+              <!-- 파일 정보 -->
+              <div class="file-info">
+                <div class="file-name" :title="file.name">{{ file.name }}</div>
+                <div class="file-type">{{ file.extension.toUpperCase() }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
         <!-- Loading State for AI messages -->
-        <div v-if="!message.isUser && message.isStreaming && !message.content" class="flex items-center space-x-2 py-2">
+        <div v-if="!isUser && message.isStreaming && !message.content" class="flex items-center space-x-2 py-2">
           <div class="flex space-x-1">
             <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
             <div class="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
@@ -33,22 +79,21 @@
       </div>
       
       <!-- Action Buttons -->
-      <div class="action-buttons">
+      <div class="action-buttons" :class="actionClass">
         <!-- Copy Button -->
         <button
           @click="copyMessage"
           class="action-btn copy-btn"
-          :class="{ 'user-copy-btn': message.isUser }"
+          :class="{ 'user-copy-btn': isUser }"
           title="메시지 복사"
         >
-          <svg class="icon" :class="message.isUser ? 'user-icon' : 'ai-icon'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="icon" :class="isUser ? 'user-icon' : 'ai-icon'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
           </svg>
         </button>
         
         <!-- Delete Button (only for AI messages) -->
         <button
-          v-if="!message.isUser"
           @click="deleteMessage"
           class="action-btn delete-btn"
           title="메시지 삭제"
@@ -60,7 +105,7 @@
         
         <!-- Refresh Button (only for AI messages) -->
         <button
-          v-if="!message.isUser"
+          v-if="!isUser"
           @click="refreshMessage"
           class="action-btn refresh-btn"
           title="답변 새로고침"
@@ -77,6 +122,8 @@
 <script>
 import { marked } from 'marked'
 import hljs from 'highlight.js'
+import katex from 'katex'
+import 'katex/dist/katex.min.css'
 
 export default {
   name: 'ChatMessage2',
@@ -87,20 +134,26 @@ export default {
     }
   },
   computed: {
+    isUser() {
+      return this.message.sender === 'user';
+    },
+    actionClass() {
+      return this.isUser ? '' : 'ai-action-buttons';
+    },
     messageClass() {
-      return this.message.isUser ? 'user-message' : 'ai-message'
+      return this.isUser ? 'user-message' : 'ai-message';
     },
     avatarClass() {
-      return this.message.isUser ? 'user-avatar' : 'ai-avatar'
+      return this.isUser ? 'user-avatar' : 'ai-avatar';
     },
     nameClass() {
-      return this.message.isUser ? 'user-name-text' : 'ai-name-text'
+      return this.isUser ? 'user-name-text' : 'ai-name-text';
     },
     bubbleClass() {
-      return this.message.isUser ? 'user-bubble' : 'ai-bubble'
+      return this.isUser ? 'user-bubble' : 'ai-bubble';
     },
     renderedContent() {
-      return this.renderMarkdown(this.message.content)
+      return this.renderMarkdown(this.message.content);
     }
   },
   methods: {
@@ -122,17 +175,22 @@ export default {
       })
 
       try {
-        let html = marked.parse(content)
+        // Process math expressions before markdown
+        let processedContent = this.processMathExpressions(content)
+        let html = marked.parse(processedContent)
         
         // Apply custom styling for user messages (white text)
-        if (this.message.isUser) {
+        if (this.isUser) {
           html = html.replace(/<code/g, '<code style="background-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.95); padding: 2px 4px; border-radius: 3px;"')
           html = html.replace(/<pre/g, '<pre style="background-color: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 12px;"')
           html = html.replace(/<blockquote/g, '<blockquote style="border-left: 4px solid rgba(255,255,255,0.5); color: rgba(255,255,255,0.9); margin: 8px 0; padding-left: 12px; font-style: italic;"')
+          // Style KaTeX elements for user messages
+          html = html.replace(/<span class="katex"/g, '<span class="katex user-katex"')
         } else {
           // AI messages - improve code block styling
           html = html.replace(/<pre/g, '<pre style="background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px;"')
           html = html.replace(/<code(?![^>]*style)/g, '<code style="background-color: #f1f3f4; color: #1f2937; padding: 2px 4px; border-radius: 3px;"')
+          html = html.replace(/<span class="katex"/g, '<span class="katex ai-katex"')
         }
         
         return html
@@ -140,6 +198,47 @@ export default {
         console.error('Markdown parsing error:', error)
         return content.replace(/\n/g, '<br>')
       }
+    },
+
+    processMathExpressions(content) {
+      // Math expression patterns and their configurations
+      const mathPatterns = [
+        { regex: /\\\[([\s\S]*?)\\\]/g, displayMode: true, type: 'LaTeX display' },
+        { regex: /\$\$([\s\S]*?)\$\$/g, displayMode: true, type: 'Markdown display' },
+        { regex: /\\\(([\s\S]*?)\\\)/g, displayMode: false, type: 'LaTeX inline' },
+        { regex: /\$([^$\n]+?)\$/g, displayMode: false, type: 'Markdown inline' }
+      ]
+
+      // Common KaTeX options
+      const katexOptions = {
+        throwOnError: false,
+        macros: {
+          "\\RR": "\\mathbb{R}",
+          "\\CC": "\\mathbb{C}",
+          "\\NN": "\\mathbb{N}",
+          "\\ZZ": "\\mathbb{Z}",
+          "\\QQ": "\\mathbb{Q}",
+          "\\FF": "\\mathbb{F}"
+        }
+      }
+
+      // Process each math pattern
+      mathPatterns.forEach(({ regex, displayMode, type }) => {
+        content = content.replace(regex, (match, math) => {
+          try {
+            const rendered = katex.renderToString(math.trim(), {
+              ...katexOptions,
+              displayMode
+            })
+            return displayMode ? `<div class="katex-display">${rendered}</div>` : rendered
+          } catch (error) {
+            console.error(`KaTeX ${type} error:`, error)
+            return match
+          }
+        })
+      })
+
+      return content
     },
     formatTime(timestamp) {
       if (!timestamp) return ''
@@ -213,6 +312,23 @@ export default {
     refreshMessage() {
       // Emit event to parent component to handle refresh
       this.$emit('refresh-message', this.message.id)
+    }
+  },
+  
+  watch: {
+    'message.content': {
+      handler() {
+        // 컨텐츠 변경 시 리렌더링 트리거
+        this.$forceUpdate()
+      }
+    },
+    
+    message: {
+      handler() {
+        // 메시지 객체 변경 시 리렌더링 트리거
+        this.$forceUpdate()
+      },
+      deep: true
     }
   }
 }
@@ -305,17 +421,21 @@ export default {
   background-color: #2563eb;
   color: white;
   margin-left: auto;
-  max-width: 400px;
+  max-width: calc(100% - 45px);
 }
 
 .ai-bubble {
   background-color: #f3f4f6;
   color: #111827;
   margin-right: auto;
-  max-width: 600px;
+  max-width: calc(100% - 45px);
 }
 
 /* Action buttons */
+.ai-action-buttons {
+  max-width: calc(100% - 45px);
+}
+
 .action-buttons {
   display: flex;
   align-items: center;
@@ -508,6 +628,85 @@ export default {
   margin-right: 8px;
 }
 
+/* KaTeX math styling */
+.prose .katex {
+  font-size: 1.1em;
+  line-height: 1.4;
+}
+
+.prose .katex-display {
+  margin: 16px 0;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.prose .katex-display > .katex {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* User message KaTeX styling */
+.prose .user-katex,
+.user-bubble .prose .katex {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.prose .user-katex .base,
+.user-bubble .prose .katex .base {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.prose .user-katex .mord,
+.prose .user-katex .mrel,
+.prose .user-katex .mop,
+.prose .user-katex .mbin,
+.prose .user-katex .mpunct,
+.prose .user-katex .mopen,
+.prose .user-katex .mclose,
+.user-bubble .prose .katex .mord,
+.user-bubble .prose .katex .mrel,
+.user-bubble .prose .katex .mop,
+.user-bubble .prose .katex .mbin,
+.user-bubble .prose .katex .mpunct,
+.user-bubble .prose .katex .mopen,
+.user-bubble .prose .katex .mclose {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* AI message KaTeX styling */
+.prose .ai-katex,
+.ai-bubble .prose .katex {
+  color: #111827 !important;
+}
+
+/* Responsive math display */
+@media (max-width: 640px) {
+  .prose .katex-display {
+    font-size: 0.9em;
+  }
+  
+  .prose .katex {
+    font-size: 1em;
+  }
+}
+
+/* Math expression selection styling */
+.prose .katex ::selection {
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+.prose .katex ::-moz-selection {
+  background-color: rgba(59, 130, 246, 0.3);
+}
+
+.user-bubble .prose .katex ::selection {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.user-bubble .prose .katex ::-moz-selection {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
 /* Animation */
 @keyframes fadeInUp {
   from {
@@ -518,5 +717,99 @@ export default {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* 첨부 파일 스타일 */
+.attached-files {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: #f9fafb;
+}
+
+.attached-files-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.attached-files-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.attached-file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+.file-thumbnail {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  overflow: hidden;
+  background-color: #f3f4f6;
+  flex-shrink: 0;
+}
+
+.thumbnail-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.file-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+}
+
+.file-icon.icon-pdf {
+  color: #ef4444;
+}
+
+.file-icon.icon-txt,
+.file-icon.icon-md {
+  color: #3b82f6;
+}
+
+.file-icon.icon-jpg,
+.file-icon.icon-png,
+.file-icon.icon-gif,
+.file-icon.icon-webp {
+  color: #10b981;
+}
+
+.file-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-type {
+  font-size: 11px;
+  color: #6b7280;
+  text-transform: uppercase;
 }
 </style>

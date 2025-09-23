@@ -139,7 +139,6 @@ class ApiService {
             
             try {
               const parsed = JSON.parse(data)
-              console.log('Anthropic Response:', parsed) // 디버깅용
               
               // Anthropic API 응답 형식에 따라 처리
               if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
