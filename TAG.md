@@ -7,9 +7,12 @@
 * [tags v1.3.250802](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **메시지 검색**: Fuse.js 기반 퍼지 검색과 하이라이팅 기능
 * [tags v1.4.250802](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **파일 업로드**: 이미지 및 문서 파일 업로드 지원
 
+* [tags v1.5.250923](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **메세지 수학적 표시법**: 메세지창 수학적 표기법 추가 Latex 문법
+
 ## Tag 사용법  
 
 ```bash
 git tag -a v1.0.250731 -m "AI 모델 채팅 기능"
-git push origin v1.0.250731
+git push origin v1.0.250731  # Push the tag to the remote repository
+git push origin --tags # Push all tags to the remote repository
 ```

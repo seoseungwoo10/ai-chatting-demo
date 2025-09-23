@@ -104,6 +104,8 @@
                   :disabled="isLoading"
                 >
                   <optgroup label="OpenAI">
+                    <option value="gpt-5-mini">GPT-5 Mini</option>
+                    <option value="gpt-4.1">GPT-4.1</option>
                     <option value="gpt-4.1-mini">GPT-4.1 Mini</option>
                     <option value="gpt-4o-mini">GPT-4o Mini</option>
                   </optgroup>
@@ -111,6 +113,7 @@
                     <option value="claude-3-5-haiku-20241022">Claude Haiku 3.5</option>
                     <option value="claude-3-5-sonnet-20241022">Sonnet 3.5</option>
                     <option value="claude-3-7-sonnet-20250219">Sonnet 3.7</option>
+                    <option value="claude-sonnet-4-20250514">Sonnet 4.0</option>
                   </optgroup>
                 </select>
               </div>
