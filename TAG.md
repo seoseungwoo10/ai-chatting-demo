@@ -6,8 +6,8 @@
 * [tags v1.2.250802](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **사이드바 토글**: 부드러운 애니메이션과 키보드 단축키 지원
 * [tags v1.3.250802](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **메시지 검색**: Fuse.js 기반 퍼지 검색과 하이라이팅 기능
 * [tags v1.4.250802](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **파일 업로드**: 이미지 및 문서 파일 업로드 지원
-
 * [tags v1.5.250923](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **메세지 수학적 표시법**: 메세지창 수학적 표기법 추가 Latex 문법
+* [tags v1.6.251015](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **Upload 파일 개선**: 이미지, PDF, TXT(Text, Markdown) 
 
 ## Tag 사용법  
 
