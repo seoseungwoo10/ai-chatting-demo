@@ -161,12 +161,14 @@ export default {
       e.preventDefault()
       this.isDragActive = false
       const files = Array.from(e.dataTransfer.files)
+      console.log("Dropped files:", files);
       this.processFiles(files)
     },
     
     handleFileSelect(e) {
       const files = Array.from(e.target.files)
       this.processFiles(files)
+      console.log("Selected files:", files);
       // input 값 초기화
       e.target.value = ''
     },
@@ -190,7 +192,7 @@ export default {
           name: file.name,
           size: file.size,
           type: this.getFileType(file),
-          extension: this.allowedTypes[file.type] || 'unknown',
+          extension: this.allowedTypes[file.type] || this.allowedTypes[file.type2] || 'unknown',
           uploading: true,
           progress: 0,
           error: false,
@@ -198,6 +200,8 @@ export default {
           content: null,
           originalFile: file
         }
+
+        console.log('Processing file:', fileData);
         
         this.uploadedFiles.push(fileData)
         
@@ -212,8 +216,18 @@ export default {
     },
     
     validateFile(file) {
+      console.log('Validating file:', file);
+
+      // 파일 타입이 공백인 경우 .md 확장자 처리
+      if (!file.type) {
+        const extension = file.name.split('.').pop().toLowerCase()
+        if (extension === 'md') {
+          file.type2 = 'text/markdown'
+        }
+      }
+
       // 파일 타입 확인
-      if (!this.allowedTypes[file.type]) {
+      if (!this.allowedTypes[file.type2] && !this.allowedTypes[file.type]) {
         this.errorMessage = `지원하지 않는 파일 형식입니다: ${file.name}`
         return false
       }
@@ -263,7 +277,9 @@ export default {
           type: fileData.type,
           extension: fileData.extension,
           content: fileData.content,
-          thumbnail: fileData.thumbnail
+          thumbnail: fileData.thumbnail,
+          textContent: fileData.textContent, // 텍스트 파일의 원본 내용
+          mediaType: fileData.mediaType // PDF, 텍스트 등의 미디어 타입
         })
         
       } catch (error) {
@@ -307,15 +323,14 @@ export default {
       const file = fileData.originalFile
       
       try {
-        // PDF.js로 첫 페이지 텍스트 추출 (간단한 구현)
-        const arrayBuffer = await file.arrayBuffer()
-        fileData.content = `[PDF 파일: ${file.name}]`
-        
-        // 실제 PDF 텍스트 추출은 복잡하므로 간단히 파일 정보만 저장
+        // PDF를 Base64로 변환하여 저장
+        fileData.content = await this.fileToBase64(file)
+        fileData.mediaType = 'application/pdf' // Claude API용 미디어 타입 저장
         
       } catch (error) {
         console.error('PDF 처리 실패:', error)
-        fileData.content = `[PDF 파일: ${file.name}]`
+        fileData.content = null
+        fileData.error = true
       }
     },
     
@@ -324,16 +339,27 @@ export default {
       
       try {
         // 텍스트 파일 내용 읽기
-        fileData.content = await file.text()
+        const textContent = await file.text()
         
-        // 너무 긴 텍스트는 일부만 저장
-        if (fileData.content.length > 10000) {
-          fileData.content = fileData.content.substring(0, 10000) + '...'
+        // 텍스트 파일은 원본 텍스트로 저장 (AI가 직접 읽을 수 있도록)
+        fileData.textContent = textContent
+        
+        // 너무 긴 텍스트는 일부만 미리보기에 표시
+        if (textContent.length > 10000) {
+          fileData.preview = textContent.substring(0, 10000) + '...'
+        } else {
+          fileData.preview = textContent
         }
+        
+        // Base64도 함께 저장 (필요시 사용)
+        fileData.content = await this.fileToBase64(file)
+        fileData.mediaType = 'text/plain' // 미디어 타입 저장
         
       } catch (error) {
         console.error('텍스트 파일 처리 실패:', error)
-        fileData.content = `[텍스트 파일: ${file.name}]`
+        fileData.textContent = null
+        fileData.content = null
+        fileData.error = true
       }
     },
     
@@ -391,6 +417,8 @@ export default {
         return 'document'
       } else if (file.type.startsWith('text/')) {
         return 'text'
+      } else if (file.type2.startsWith('text/')) {
+        return 'text'        
       }
       return 'document'
     },

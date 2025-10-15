@@ -12,9 +12,12 @@ class ApiService {
     console.log('API Service initialized with direct endpoints for better streaming performance')
   }
 
-  // OpenAI API 호출 (스트리밍)
+  // OpenAI API 호출 (스트리밍) - 멀티모달 지원
   async streamOpenAIResponse(messages, model = 'gpt-4o-mini', onChunk) {
     try {
+      // 멀티모달 메시지 변환 (이미지가 있는 경우)
+      const formattedMessages = this.formatMessagesForOpenAI(messages)
+      
       const response = await fetch(this.openaiEndpoint, {
         method: 'POST',
         headers: {
@@ -23,7 +26,7 @@ class ApiService {
         },
         body: JSON.stringify({
           model: model,
-          messages: messages,
+          messages: formattedMessages,
           stream: true,
           max_tokens: 2000,
           temperature: 0.7
@@ -70,14 +73,11 @@ class ApiService {
     }
   }
 
-  // Anthropic API 호출 (스트리밍)
+  // Anthropic API 호출 (스트리밍) - 멀티모달 지원
   async streamAnthropicResponse(messages, model = 'claude-3-5-haiku-20241022', onChunk) {
     try {
-      // Anthropic 메시지 형식으로 변환
-      const anthropicMessages = messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'assistant' : 'user',
-        content: msg.content
-      }))
+      // Anthropic 메시지 형식으로 변환 (멀티모달 지원)
+      const anthropicMessages = this.formatMessagesForAnthropic(messages)
 
       console.log('Anthropic API Request:', {
         endpoint: this.anthropicEndpoint,
@@ -175,6 +175,146 @@ class ApiService {
       throw new Error(`Unsupported model: ${selectedModel}`)
     }
   }
+
+  // OpenAI 형식으로 메시지 변환 (멀티모달 지원)
+  formatMessagesForOpenAI(messages) {
+    return messages.map(msg => {
+      // attachedFiles가 있고 파일이 포함된 경우
+      if (msg.attachedFiles && msg.attachedFiles.length > 0) {
+        const content = []
+        
+        // 텍스트 메시지 추가
+        if (msg.content) {
+          content.push({
+            type: 'text',
+            text: msg.content
+          })
+        }
+        
+        // 첨부 파일들 처리
+        msg.attachedFiles.forEach(file => {
+          if (file.type === 'image' && file.content) {
+            // 이미지 파일 처리
+            const imageUrl = file.content.startsWith('data:') 
+              ? file.content 
+              : `data:image/${file.extension};base64,${file.content}`
+            
+            content.push({
+              type: 'image_url',
+              image_url: {
+                url: imageUrl
+              }
+            })
+          } else if (file.type === 'text' && file.textContent) {
+            // 텍스트 파일 처리 - 내용을 텍스트로 추가
+            content.push({
+              type: 'text',
+              text: `--- 첨부 텍스트 파일: ${file.name} ---\n\n${file.textContent}\n\n--- 파일 내용 끝 ---`
+            })
+          } else if (file.type === 'document' && file.extension === 'pdf' && file.content) {
+            // PDF 파일 처리 - Base64 인코딩된 내용을 텍스트로 추가
+            // OpenAI는 현재 PDF를 직접 지원하지 않으므로 base64 문자열로 전달
+            let base64Data = file.content
+            if (base64Data.startsWith('data:')) {
+              base64Data = base64Data.split(',')[1]
+            }
+            
+            content.push({
+              type: 'text',
+              text: `--- 첨부 PDF 파일: ${file.name} (Base64 인코딩) ---\n\n${base64Data}\n\n--- 파일 내용 끝 ---`
+            })
+          }
+        })
+        
+        return {
+          role: msg.role,
+          content: content
+        }
+      }
+      
+      // 일반 텍스트 메시지
+      return {
+        role: msg.role,
+        content: msg.content
+      }
+    })
+  }
+
+  // Anthropic 형식으로 메시지 변환 (멀티모달 지원)
+  formatMessagesForAnthropic(messages) {
+    return messages.map(msg => {
+      const role = msg.role === 'assistant' ? 'assistant' : 'user'
+      
+      // attachedFiles가 있고 파일이 포함된 경우
+      if (msg.attachedFiles && msg.attachedFiles.length > 0) {
+        const content = []
+        
+        // 텍스트 메시지 추가
+        if (msg.content) {
+          content.push({
+            type: 'text',
+            text: msg.content
+          })
+        }
+        
+        // 첨부 파일들 처리
+        msg.attachedFiles.forEach(file => {
+          if (file.type === 'image' && file.content) {
+            // 이미지 파일 처리
+            let base64Data = file.content
+            if (base64Data.startsWith('data:')) {
+              base64Data = base64Data.split(',')[1]
+            }
+            
+            const mediaType = `image/${file.extension === 'jpg' ? 'jpeg' : file.extension}`
+            
+            content.push({
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: mediaType,
+                data: base64Data
+              }
+            })
+          } else if (file.type === 'text' && file.textContent) {
+            // 텍스트 파일 처리 - 내용을 텍스트로 추가
+            content.push({
+              type: 'text',
+              text: `첨부 파일 (${file.name}) 내용:\n\n${file.textContent}`
+            })
+          } else if (file.type === 'document' && file.extension === 'pdf' && file.content) {
+            // PDF 파일 처리 - Claude는 document 타입 지원
+            let base64Data = file.content
+            if (base64Data.startsWith('data:')) {
+              base64Data = base64Data.split(',')[1]
+            }
+            
+            content.push({
+              type: 'document',
+              source: {
+                type: 'base64',
+                media_type: 'application/pdf',
+                data: base64Data
+              },
+              cache_control: { type: 'ephemeral' }
+            })
+          }
+        })
+        
+        return {
+          role: role,
+          content: content
+        }
+      }
+      
+      // 일반 텍스트 메시지
+      return {
+        role: role,
+        content: msg.content
+      }
+    })
+  }
+
 
   // API 키 검증
   validateApiKeys() {

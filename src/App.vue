@@ -502,16 +502,36 @@ export default {
         const conversationMessages = this.safeCurrentMessages
           .filter(msg => !msg.isStreaming)
           .slice(-10)
-          .map(msg => ({
-            role: msg.sender === 'user' ? 'user' : 'assistant',
-            content: msg.content
-          }))
+          .map(msg => {
+            const message = {
+              role: msg.sender === 'user' ? 'user' : 'assistant',
+              content: msg.content
+            }
+            
+            // 첨부파일이 있는 경우 추가
+            if (msg.attachedFiles && msg.attachedFiles.length > 0) {
+              message.attachedFiles = msg.attachedFiles
+            }
+            
+            return message
+          })
 
-        // 현재 사용자 메시지 추가
-        conversationMessages.push({
+        // 현재 사용자 메시지 추가 (최근에 보낸 메시지에서 첨부파일 가져오기)
+        const lastUserMessage = this.safeCurrentMessages
+          .filter(msg => !msg.isStreaming && msg.sender === 'user')
+          .slice(-1)[0]
+        
+        const currentUserMessage = {
           role: 'user',
           content: userMessage
-        })
+        }
+        
+        // 마지막 사용자 메시지에 첨부파일이 있으면 추가
+        if (lastUserMessage && lastUserMessage.attachedFiles) {
+          currentUserMessage.attachedFiles = lastUserMessage.attachedFiles
+        }
+        
+        conversationMessages.push(currentUserMessage)
 
         // AI 메시지 인덱스 찾기
         let aiMessageIndex = -1
@@ -821,7 +841,7 @@ export default {
     },
 
     formatAttachedFilesForAI() {
-      // AI에게 전송할 때 첨부 파일 정보 포맷팅
+      // AI에게 전송할 때 첨부 파일 정보 포맷팅 (사용자 메시지에 표시되는 텍스트)
       if (this.attachedFiles.length === 0) return ''
       
       let fileContext = '\n\n--- 첨부된 파일 ---\n'
@@ -831,8 +851,14 @@ export default {
         
         if (file.type === 'image' && file.content) {
           fileContext += '[이미지가 첨부되었습니다]\n'
-        } else if (file.type === 'text' && file.content) {
-          fileContext += `내용:\n${file.content}\n`
+        } else if (file.type === 'text' && file.textContent) {
+          // 텍스트 파일의 경우 미리보기 표시
+          const preview = file.textContent.length > 200 
+            ? file.textContent.substring(0, 200) + '...' 
+            : file.textContent
+          fileContext += `[텍스트 파일이 첨부되었습니다 - 미리보기: ${preview}]\n`
+        } else if (file.type === 'document' && file.extension === 'pdf') {
+          fileContext += `[PDF 문서가 첨부되었습니다]\n`
         } else if (file.type === 'document') {
           fileContext += `[${file.extension.toUpperCase()} 문서가 첨부되었습니다]\n`
         }
