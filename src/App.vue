@@ -199,7 +199,7 @@
           </div>
 
           <!-- Demo Buttons -->
-          <div class="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0 transition-colors duration-200">
+          <!-- div class="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0 transition-colors duration-200">
             <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">데모 메시지:</h3>
             <div class="flex flex-wrap gap-2">
               <button
@@ -211,7 +211,7 @@
                 {{ demo.title }}
               </button>
             </div>
-          </div>
+          </div -->
         </div>
       </div>
     </div>

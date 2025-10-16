@@ -3,7 +3,7 @@
     <!-- 사용자 프로필 버튼 -->
     <button
       @click="toggleDropdown"
-      class="flex items-center space-x-2 p-2 rounded-lg hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+      class="flex items-center space-x-2 p-2 rounded-lg hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 group"
     >
       <img
         :src="currentUser.avatar"
@@ -15,7 +15,7 @@
         {{ currentUser.nickname }}
       </span>
       <svg
-        class="w-4 h-4 text-gray-500 transition-transform"
+        class="w-4 h-4 text-gray-100 group-hover:text-gray-500 transition-all duration-200"
         :class="{ 'rotate-180': isDropdownOpen }"
         fill="none"
         stroke="currentColor"

@@ -370,7 +370,7 @@ export default {
 }
 
 .user-avatar {
-  background-color: #2563eb;
+  background-color: #009688;
 }
 
 .ai-avatar {
@@ -397,7 +397,7 @@ export default {
 }
 
 .user-name-text {
-  color: #2563eb;
+  color: #009688;
 }
 
 .ai-name-text {
@@ -418,7 +418,7 @@ export default {
 }
 
 .user-bubble {
-  background-color: #2563eb;
+  background-color: #607d8b;
   color: white;
   margin-left: auto;
   max-width: calc(100% - 45px);
