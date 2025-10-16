@@ -4,6 +4,7 @@ module.exports = {
     "./public/**/*.html",
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
+  darkMode: 'class', // 다크모드를 클래스 기반으로 설정
   theme: {
     extend: {
       colors: {

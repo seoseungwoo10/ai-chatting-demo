@@ -1,24 +1,24 @@
 <template>
-  <div class="search-sidebar h-full bg-gray-50 border-r border-gray-200 flex flex-col">
+  <div class="search-sidebar h-full bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-colors duration-200">
     <!-- 검색 헤더 -->
-    <div class="p-4 border-b border-gray-200">
+    <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <div class="relative">
         <input
           type="text"
           v-model="searchQuery"
           @input="debouncedSearch"
           placeholder="메시지 검색..."
-          class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          class="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
         />
         <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
-          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
         </div>
       </div>
       
       <!-- 검색 결과 요약 -->
-      <div class="mt-2 text-sm text-gray-600">
+      <div class="mt-2 text-sm text-gray-600 dark:text-gray-400">
         <span v-if="searchQuery && searchResults.length > 0">
           {{ searchResults.length }}개 결과 발견
         </span>
@@ -34,19 +34,19 @@
     <!-- 검색 결과 목록 -->
     <div class="flex-1 overflow-y-auto">
       <div class="p-2">
-        <div v-if="!searchQuery" class="text-center py-8 text-gray-400">
+        <div v-if="!searchQuery" class="text-center py-8 text-gray-400 dark:text-gray-500">
           <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
           </svg>
           <p>검색어를 입력하세요</p>
         </div>
 
-        <div v-else-if="isSearching" class="text-center py-8 text-gray-400">
-          <div class="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+        <div v-else-if="isSearching" class="text-center py-8 text-gray-400 dark:text-gray-500">
+          <div class="animate-spin w-8 h-8 border-4 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full mx-auto mb-4"></div>
           <p>검색 중...</p>
         </div>
 
-        <div v-else-if="searchResults.length === 0" class="text-center py-8 text-gray-400">
+        <div v-else-if="searchResults.length === 0" class="text-center py-8 text-gray-400 dark:text-gray-500">
           <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.5-1 6-2.168V6.108c0-1.305-.24-2.584-.713-3.756a11.249 11.249 0 00-2.202-3.254"></path>
           </svg>
@@ -57,24 +57,24 @@
         <div
           v-for="result in searchResults"
           :key="`${result.chatId}-${result.messageId}`"
-          class="search-result-item group relative p-3 mb-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100"
+          class="search-result-item group relative p-3 mb-2 rounded-lg cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-700"
           @click="selectSearchResult(result)"
         >
           <div class="flex flex-col">
             <!-- 채팅방 제목 -->
             <div class="flex items-center justify-between mb-2">
-              <h4 class="text-sm font-medium text-gray-900 truncate">
+              <h4 class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                 {{ result.chatTitle }}
               </h4>
-              <span class="text-xs text-gray-500">
+              <span class="text-xs text-gray-500 dark:text-gray-400">
                 {{ formatTime(result.timestamp) }}
               </span>
             </div>
             
             <!-- 메시지 내용 (하이라이팅 포함) -->
-            <div class="text-sm text-gray-700">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
               <p class="mb-1">
-                <span class="text-xs text-blue-600 font-medium">
+                <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
                   {{ result.sender === 'user' ? '사용자' : 'AI' }}:
                 </span>
               </p>
@@ -86,13 +86,13 @@
 
             <!-- 일치도 표시 -->
             <div class="mt-2 flex items-center">
-              <div class="flex-1 bg-gray-200 rounded-full h-1">
+              <div class="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-1">
                 <div 
-                  class="bg-blue-500 h-1 rounded-full"
+                  class="bg-blue-500 dark:bg-blue-400 h-1 rounded-full"
                   :style="{ width: `${Math.round(result.score * 100)}%` }"
                 ></div>
               </div>
-              <span class="ml-2 text-xs text-gray-500">
+              <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">
                 {{ Math.round(result.score * 100) }}% 일치
               </span>
             </div>

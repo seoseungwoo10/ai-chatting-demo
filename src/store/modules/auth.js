@@ -13,7 +13,8 @@ const state = {
   isAuthenticated: false,
   currentUser: null,
   users: JSON.parse(localStorage.getItem('ai_chat_users') || '{}'),
-  userSessions: JSON.parse(localStorage.getItem('ai_chat_sessions') || '{}')
+  userSessions: JSON.parse(localStorage.getItem('ai_chat_sessions') || '{}'),
+  currentTheme: localStorage.getItem('ai_chat_theme') || 'light' // 현재 적용된 테마
 }
 
 const mutations = {
@@ -47,6 +48,18 @@ const mutations = {
     state.isAuthenticated = false
     state.currentUser = null
     sessionStorage.removeItem('ai_chat_current_session')
+  },
+  
+  SET_THEME(state, theme) {
+    state.currentTheme = theme
+    localStorage.setItem('ai_chat_theme', theme)
+    
+    // HTML 요소에 다크모드 클래스 적용/제거
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
   }
 }
 
@@ -208,6 +221,36 @@ const actions = {
   // 사용자 설정 업데이트
   updatePreferences({ commit }, preferences) {
     commit('UPDATE_USER', { preferences })
+    
+    // 테마 설정이 변경된 경우 즉시 적용
+    if (preferences.theme) {
+      this.dispatch('auth/applyTheme', preferences.theme)
+    }
+  },
+  
+  // 테마 적용
+  applyTheme({ commit }, themePreference) {
+    let theme = themePreference
+    
+    // 'auto' 모드인 경우 시스템 설정 감지
+    if (themePreference === 'auto') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      theme = prefersDark ? 'dark' : 'light'
+    }
+    
+    commit('SET_THEME', theme)
+  },
+  
+  // 초기 테마 설정
+  initializeTheme({ commit, state }) {
+    const user = state.currentUser
+    if (user && user.preferences && user.preferences.theme) {
+      this.dispatch('auth/applyTheme', user.preferences.theme)
+    } else {
+      // 기본값: localStorage에 저장된 테마 또는 'light'
+      const savedTheme = localStorage.getItem('ai_chat_theme') || 'light'
+      commit('SET_THEME', savedTheme)
+    }
   }
 }
 
@@ -216,7 +259,8 @@ const getters = {
   currentUser: state => state.currentUser,
   userPreferences: state => state.currentUser ? state.currentUser.preferences : {},
   isGuest: state => state.currentUser ? state.currentUser.isGuest || false : false,
-  lastChatId: state => state.currentUser ? state.currentUser.lastChatId : null
+  lastChatId: state => state.currentUser ? state.currentUser.lastChatId : null,
+  currentTheme: state => state.currentTheme
 }
 
 export default {

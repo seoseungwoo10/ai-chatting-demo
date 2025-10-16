@@ -8,6 +8,7 @@
 * [tags v1.4.250802](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **파일 업로드**: 이미지 및 문서 파일 업로드 지원
 * [tags v1.5.250923](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **메세지 수학적 표시법**: 메세지창 수학적 표기법 추가 Latex 문법
 * [tags v1.6.251015](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **Upload 파일 개선**: 이미지, PDF, TXT(Text, Markdown) 
+* [tags v1.7.251015](https://github.com/seoseungwoo10/ai-chatting-demo/tags) => **다크 모드**: 어두운 테마 지원
 
 ## Tag 사용법  
 

@@ -1,5 +1,5 @@
 <template>
-  <div id="app" class="h-screen bg-gray-100 flex flex-col">
+  <div id="app" class="h-screen bg-gray-100 dark:bg-gray-900 flex flex-col transition-colors duration-200">
     <!-- 인증 모달 -->
     <AuthModal
       v-if="!isAuthenticated"
@@ -24,9 +24,9 @@
       
       <!-- 메인 채팅 영역 -->
       <div class="flex-1 flex flex-col min-w-0">
-        <div class="bg-white flex flex-col h-full">
+        <div class="bg-white dark:bg-gray-800 flex flex-col h-full transition-colors duration-200">
           <!-- Header -->
-          <div class="bg-blue-600 text-white px-6 py-4 flex-shrink-0">
+          <div class="bg-blue-600 dark:bg-blue-800 text-white px-6 py-4 flex-shrink-0 transition-colors duration-200">
             <div class="flex justify-between items-center">
               <div class="flex items-center space-x-3">
                 <!-- 사이드바 토글 버튼 -->
@@ -73,13 +73,13 @@
             class="chat-container overflow-y-auto p-4 space-y-4 flex-1 min-h-0"
             ref="chatContainer"
           >
-            <div v-if="!safeCurrentMessages.length" class="flex items-center justify-center h-full text-gray-500">
+            <div v-if="!safeCurrentMessages.length" class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
               <div class="text-center">
-                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.954 8.954 0 01-2.965-.516L3 20l.735-2.706A8.95 8.95 0 013 15c0-4.418 3.582-8 8-8s8 3.582 8 5z"></path>
                 </svg>
-                <p class="text-lg">새로운 대화를 시작해보세요!</p>
-                <p class="text-sm text-gray-400 mt-2">아래에 메시지를 입력하거나 데모 버튼을 클릭하세요.</p>
+                <p class="text-lg dark:text-gray-300">새로운 대화를 시작해보세요!</p>
+                <p class="text-sm text-gray-400 dark:text-gray-500 mt-2">아래에 메시지를 입력하거나 데모 버튼을 클릭하세요.</p>
               </div>
             </div>
             
@@ -93,14 +93,14 @@
           </div>
 
           <!-- Input Area -->
-          <div class="border-t border-gray-200 p-4 flex-shrink-0">
+          <div class="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 bg-white dark:bg-gray-800 transition-colors duration-200">
             <!-- Model Selection Bar -->
-            <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+            <div class="flex items-center justify-between mb-3 pb-3 border-b border-gray-100 dark:border-gray-700">
               <div class="flex items-center space-x-3">
-                <label class="text-sm font-medium text-gray-700">AI 모델:</label>
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">AI 모델:</label>
                 <select 
                   v-model="selectedModel" 
-                  class="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                   :disabled="isLoading"
                 >
                   <optgroup label="OpenAI">
@@ -120,7 +120,7 @@
               
               <!-- API Status -->
               <div class="flex items-center space-x-2">
-                <span class="text-xs text-gray-600">
+                <span class="text-xs text-gray-600 dark:text-gray-400">
                   {{ apiStatus.isValid ? 'API 준비됨' : 'API 키 필요' }}
                 </span>
               </div>
@@ -142,15 +142,15 @@
                     v-model="inputMessage"
                     @keydown.enter="handleEnter"
                     placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈, Enter로 전송)"
-                    class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    class="w-full px-3 py-2 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
                     rows="3"
                   ></textarea>
                   
                   <!-- 파일 업로드 토글 버튼 -->
                   <button
                     @click="toggleFileUpload"
-                    class="absolute right-3 top-3 p-1 text-gray-400 hover:text-blue-600 focus:outline-none focus:text-blue-600 transition-colors"
-                    :class="{ 'text-blue-600': showFileUpload }"
+                    class="absolute right-3 top-3 p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 focus:outline-none focus:text-blue-600 dark:focus:text-blue-400 transition-colors"
+                    :class="{ 'text-blue-600 dark:text-blue-400': showFileUpload }"
                     title="파일 첨부"
                   >
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,18 +160,18 @@
                 </div>
                 
                 <!-- 첨부된 파일 미리보기 -->
-                <div v-if="attachedFiles.length > 0" class="mt-2 p-2 bg-blue-50 rounded-lg">
-                  <div class="text-xs text-blue-700 mb-1">첨부된 파일 ({{ attachedFiles.length }}개):</div>
+                <div v-if="attachedFiles.length > 0" class="mt-2 p-2 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                  <div class="text-xs text-blue-700 dark:text-blue-300 mb-1">첨부된 파일 ({{ attachedFiles.length }}개):</div>
                   <div class="flex flex-wrap gap-1">
                     <span 
                       v-for="file in attachedFiles" 
                       :key="file.id"
-                      class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                      class="inline-flex items-center px-2 py-1 bg-blue-100 dark:bg-blue-800 text-blue-800 dark:text-blue-100 text-xs rounded-full"
                     >
                       {{ file.name }}
                       <button 
                         @click="removeAttachedFile(file.id)"
-                        class="ml-1 text-blue-600 hover:text-blue-800"
+                        class="ml-1 text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
                       >
                         ×
                       </button>
@@ -183,14 +183,14 @@
                 <button
                   @click="sendMessage"
                   :disabled="(!inputMessage.trim() && attachedFiles.length === 0) || isLoading"
-                  class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                 >
                   <span v-if="isLoading">전송 중...</span>
                   <span v-else>전송</span>
                 </button>
                 <button
                   @click="clearChat"
-                  class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                  class="px-4 py-2 bg-gray-500 dark:bg-gray-600 text-white rounded-lg hover:bg-gray-600 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 transition-colors duration-200"
                 >
                   초기화
                 </button>
@@ -199,14 +199,14 @@
           </div>
 
           <!-- Demo Buttons -->
-          <div class="border-t border-gray-200 p-4 bg-gray-50 flex-shrink-0">
-            <h3 class="text-sm font-medium text-gray-700 mb-2">데모 메시지:</h3>
+          <div class="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0 transition-colors duration-200">
+            <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">데모 메시지:</h3>
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="demo in demoMessages"
                 :key="demo.id"
                 @click="sendDemoMessage(demo)"
-                class="px-3 py-1 text-xs bg-white border border-gray-300 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                class="px-3 py-1 text-xs bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors duration-200"
               >
                 {{ demo.title }}
               </button>
@@ -247,6 +247,7 @@ export default {
       isSearchMode: false, // 검색 모드 상태
       showFileUpload: false, // 파일 업로드 영역 표시 상태
       attachedFiles: [], // 첨부된 파일 목록
+      mediaQuery: null, // 시스템 다크모드 감지용
       apiStatus: {
         isValid: false,
         errors: []
@@ -301,6 +302,12 @@ export default {
     // 세션 복원 시도
     await this.restoreSession()
     
+    // 테마 초기화
+    this.$store.dispatch('auth/initializeTheme')
+    
+    // 시스템 다크모드 변경 감지 (auto 모드용)
+    this.setupThemeWatcher()
+    
     // API 키 상태 확인
     this.checkApiKeys()
     
@@ -315,6 +322,11 @@ export default {
   beforeDestroy() {
     // 키보드 이벤트 리스너 제거
     document.removeEventListener('keydown', this.handleKeydown)
+    
+    // 시스템 테마 감지 리스너 제거
+    if (this.mediaQuery) {
+      this.mediaQuery.removeEventListener('change', this.handleSystemThemeChange)
+    }
   },
   methods: {
     ...mapActions('auth', ['restoreSession']),
@@ -865,6 +877,20 @@ export default {
       }
       
       return fileContext
+    },
+
+    // 시스템 테마 감지 설정
+    setupThemeWatcher() {
+      this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+      this.mediaQuery.addEventListener('change', this.handleSystemThemeChange)
+    },
+
+    // 시스템 테마 변경 시 처리
+    handleSystemThemeChange(e) {
+      // 사용자가 'auto' 모드인 경우에만 시스템 테마 변경 반영
+      if (this.currentUser && this.currentUser.preferences && this.currentUser.preferences.theme === 'auto') {
+        this.$store.dispatch('auth/applyTheme', 'auto')
+      }
     }
   },
 
@@ -874,6 +900,13 @@ export default {
       this.$nextTick(() => {
         this.scrollToBottom()
       })
+    },
+    
+    // 사용자 로그인 시 테마 적용
+    isAuthenticated(newVal) {
+      if (newVal) {
+        this.$store.dispatch('auth/initializeTheme')
+      }
     }
   }
 }

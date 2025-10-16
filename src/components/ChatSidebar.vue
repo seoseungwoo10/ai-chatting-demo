@@ -1,10 +1,10 @@
 <template>
-  <div class="chat-sidebar h-full bg-gray-50 border-r border-gray-200 flex flex-col">
+  <div class="chat-sidebar h-full bg-gray-50 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-colors duration-200">
     <!-- 사이드바 헤더 -->
-    <div class="p-4 border-b border-gray-200">
+    <div class="p-4 border-b border-gray-200 dark:border-gray-700">
       <button
         @click="createNewChat"
-        class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center space-x-2"
+        class="w-full bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center space-x-2 transition-colors duration-200"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -21,8 +21,8 @@
           :key="chat.id"
           class="chat-item group relative p-3 mb-2 rounded-lg cursor-pointer transition-colors"
           :class="{
-            'bg-blue-100 border-l-4 border-blue-500': chat.id === currentChatId,
-            'hover:bg-gray-100': chat.id !== currentChatId
+            'bg-blue-100 dark:bg-blue-900/50 border-l-4 border-blue-500 dark:border-blue-400': chat.id === currentChatId,
+            'hover:bg-gray-100 dark:hover:bg-gray-700': chat.id !== currentChatId
           }"
           @click="selectChat(chat.id)"
         >
@@ -31,7 +31,7 @@
             <div class="flex-1 min-w-0">
               <h3 
                 v-if="editingChatId !== chat.id"
-                class="text-sm font-medium text-gray-900 truncate"
+                class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate"
                 @dblclick="startEditing(chat)"
               >
                 {{ chat.title }}
@@ -42,10 +42,10 @@
                 @blur="finishEditing(chat)"
                 @keydown.enter="finishEditing(chat)"
                 @keydown.esc="cancelEditing(chat)"
-                class="text-sm font-medium text-gray-900 bg-transparent border-none outline-none w-full"
+                class="text-sm font-medium text-gray-900 dark:text-gray-100 bg-transparent border-none outline-none w-full"
                 ref="titleInput"
               />
-              <p class="text-xs text-gray-500 mt-1">
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 {{ formatTime(chat.updatedAt) }}
               </p>
             </div>
@@ -55,10 +55,10 @@
               <!-- 즐겨찾기 -->
               <button
                 @click.stop="toggleFavorite(chat)"
-                class="p-1 rounded hover:bg-gray-200"
+                class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                 :title="chat.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가'"
               >
-                <svg class="w-4 h-4" :class="chat.isFavorite ? 'text-yellow-500' : 'text-gray-400'" fill="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4" :class="chat.isFavorite ? 'text-yellow-500 dark:text-yellow-400' : 'text-gray-400 dark:text-gray-500'" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                 </svg>
               </button>
@@ -66,10 +66,10 @@
               <!-- 더 보기 메뉴 -->
               <button
                 @click.stop="showContextMenu($event, chat)"
-                class="p-1 rounded hover:bg-gray-200"
+                class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
                 title="메뉴"
               >
-                <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-gray-400 dark:text-gray-500" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
                 </svg>
               </button>
@@ -89,32 +89,32 @@
     <!-- 컨텍스트 메뉴 -->
     <div
       v-if="contextMenu.show"
-      class="fixed bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-50"
+      class="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 z-50 transition-colors duration-200"
       :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
       @click.stop
     >
       <button
         @click="startEditing(contextMenu.chat)"
-        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+        class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
       >
         이름 변경
       </button>
       <button
         @click="toggleFavorite(contextMenu.chat)"
-        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+        class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
       >
         {{ contextMenu.chat.isFavorite ? '즐겨찾기 해제' : '즐겨찾기 추가' }}
       </button>
       <button
         @click="showColorPicker(contextMenu.chat)"
-        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+        class="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
       >
         색상 변경
       </button>
-      <hr class="my-1">
+      <hr class="my-1 border-gray-200 dark:border-gray-700">
       <button
         @click="deleteChat(contextMenu.chat)"
-        class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+        class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
       >
         삭제
       </button>
@@ -123,7 +123,7 @@
     <!-- 색상 선택기 -->
     <div
       v-if="colorPicker.show"
-      class="fixed bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-50"
+      class="fixed bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 z-50 transition-colors duration-200"
       :style="{ top: colorPicker.y + 'px', left: colorPicker.x + 'px' }"
       @click.stop
     >
@@ -132,13 +132,13 @@
           v-for="color in colorOptions"
           :key="color"
           @click="setColor(colorPicker.chat, color)"
-          class="w-6 h-6 rounded-full border-2 border-gray-300 hover:border-gray-500"
+          class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 hover:border-gray-500 dark:hover:border-gray-400"
           :style="{ backgroundColor: color }"
         ></button>
       </div>
       <button
         @click="setColor(colorPicker.chat, null)"
-        class="mt-2 w-full text-xs text-gray-500 hover:text-gray-700"
+        class="mt-2 w-full text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
       >
         색상 제거
       </button>
